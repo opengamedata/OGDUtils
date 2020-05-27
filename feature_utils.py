@@ -367,37 +367,37 @@ def get_feat_selection_lakeland(df,  max_lvl=9):
 
     return selection_widget
 
-def get_feat_selection(df, session_prefix, max_lvl):
+def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
     """
     Gets the feature selection widget.
     :param df:
     :param max_lvl:
     :return:
     """
-    start_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='Start Level:',
+
+    cc_prefix_max_list= cc_prefix_max_list or [];
+    checkbox_widgets = []
+    slider_widgets = []
+    feats = set()
+
+    for prefix, max_val in [('lvl', max_lvl)] + cc_prefix_max_list:
+        start_val = widgets.IntSlider(value=0, min=0, max=max_val, step=1, description=f'Start {prefix}:',
+                                        disabled=False, continuous_update=False, orientation='horizontal', readout=True,
+                                        readout_format='d')
+        end_val = widgets.IntSlider(value=0, min=0, max=max_val, step=1, description=f'End {prefix}:',
                                     disabled=False, continuous_update=False, orientation='horizontal', readout=True,
                                     readout_format='d')
-    end_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='End Level:',
-                                  disabled=False, continuous_update=False, orientation='horizontal', readout=True,
-                                  readout_format='d')
-    level_selection = widgets.GridBox([start_level, end_level])
+        val_selection = widgets.GridBox([start_val, end_val])
+        slider_widgets.append(val_selection)
+        val_feats_set = set(['_'.join(f.split('_')[1:]) for f in df.columns if f.startswith(prefix)])
+        feats = feats.union([f'{prefix}{n}_{v}' for n in range(max_val) for v in val_feats_set])
+        val_feats = sorted(val_feats_set)
+        val_feats_checkbox = multi_checkbox_widget(val_feats, prefix)
+        checkbox_widgets.append(val_feats_checkbox)
 
-    def change_start_level(change):
-        end_level.min = start_level.value
-        if end_level.value < start_level.value:
-            end_level.value = start_level.value
-
-    start_level.observe(change_start_level, names="value")
-
-    lvl_feats = sorted(set([f[5:] for f in df.columns if f.startswith('lvl')]))
-    skip = len(session_prefix)+1
-    sess_feats = sorted(set([f[skip:] for f in df.columns if f.startswith(f'{session_prefix}_')]))
-    other_feats = sorted(set([f for f in df.columns if not f.startswith('lvl') and not f.startswith('sess_')]))
-    selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats, 'lvl'),
-                                        multi_checkbox_widget(sess_feats, 'sess_'),
-                                        multi_checkbox_widget(other_feats, 'other'),
-                                        level_selection],
-                                       layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
+    other_feats = sorted(set(df.columns).difference(feats))
+    selection_widget = widgets.GridBox(checkbox_widgets+slider_widgets+[multi_checkbox_widget(other_feats, 'other')],
+                                       layout=widgets.Layout(grid_template_columns=f"repeat({len(slider_widgets)}, 500px)"))
 
     return selection_widget
 
@@ -433,34 +433,45 @@ def get_feat_selection_waves(df, max_lvl=34):
                                        layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
 
     return selection_widget
-def get_selected_feature_list(selection_widget, session_prefix):
+
+def get_selected_feature_list(selection_widget, session_prefix, cc_prefix_max_list=None):
     """
 
     :param selection_widget:
     :return: list of features selected
     """
+    cc_prefix_max_list = cc_prefix_max_list or []
+    prefix_list = ['lvl']+[prefix_max[0] for prefix_max in cc_prefix_max_list]
+    other_feats = [s.description for s in selection_widget.children[-1].children[1].children if s.value]
+    range_feats_and_range = get_range_feats_and_range(selection_widget)
+    range_feats_list = []
+    for i in range(len(range_feats_and_range)):
+        prefix = prefix_list[i]
+        feats = range_feats_and_range[i][0]
+        rang = range_feats_and_range[i][1]
+        range_feats_list += [f'{prefix}{n}_{f}' for f in feats for n in rang]
+    return range_feats_list + other_feats
 
-    sess_feats = [f'{session_prefix}_{s.description}' for s in selection_widget.children[1].children[1].children if s.value]
-    other_feats = [s.description for s in selection_widget.children[2].children[1].children if s.value]
-    lvl_feats, lvl_range = get_level_feats_and_range(selection_widget)
-    all_lvl_feats = [f'lvl{i}_{f}' for f in lvl_feats for i in lvl_range]
-    return all_lvl_feats + sess_feats + other_feats
-
-def get_level_feats_and_range(selection_widget) -> (List[str], Iterable):
+def get_range_feats_and_range(selection_widget) -> (List[str], Iterable):
     """
 
     :param selection_widget:
     :return: List of fbases from selection_widget and level range
     """
-    lvl_start_widget = selection_widget.children[3].children[0]
-    lvl_end_widget = selection_widget.children[3].children[1]
-    lvl_feats = [s.description for s in selection_widget.children[0].children[1].children if s.value]
-    lvl_range = range(lvl_start_widget.value, lvl_end_widget.value + 1)
-    # lvl_feat_widget = feat_selection.children[0]
-    # lvl_start_widget = feat_selection.children[3].children[0]
-    # lvl_end_widget = feat_selection.children[3].children[1]
-    # lvl_range = range(lvl_start_widget.value, lvl_end_widget.value+1)
-    return lvl_feats, lvl_range
+    ret = []
+    widgets = selection_widget.children
+    assert len(widgets) % 2
+    num_range_groups = (len(widgets)-1)//2
+    for i in range(num_range_groups):
+        checkbox = widgets[i]
+        slider = widgets[i+num_range_groups]
+        start_widget = slider.children[0]
+        end_widget = slider.children[1]
+        feat_list = [s.description for s in checkbox.children[1].children if s.value]
+        val_range = range(start_widget.value, end_widget.value + 1)
+        ret.append((feat_list, val_range))
+
+    return ret
 
 
 def multi_checkbox_widget(descriptions, category):
