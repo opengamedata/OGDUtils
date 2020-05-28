@@ -346,6 +346,42 @@ def describe_lvl_feats(df, fbase_list, lvl_range):
     return df, metadata
 
 
+def describe_range_feats(df, range_feats_and_range, cc_prefix_max_list):
+    """
+    Calculates sum/avg of given level base features (fnames without lvlN_ prefix) in the level range.
+    May have a bug.
+
+    :rtype: (df, List[str]) where the new df includes sum_ and avg_lvl_A_to_B
+    :param df: dataframe to pull from and append to
+    :param fbase_list: list of feature bases (fnames without lvlN_ prefix)
+    :param lvl_range: range of levels to choose. typically range(min_level, max_level+1)
+    """
+    metadata = []
+    metadata.append(f'*arg* range_feats_and_range = {range_feats_and_range}')
+    metadata.append(f'*arg* cc_prefix_max_list = {cc_prefix_max_list}')
+    if not range_feats_and_range:
+        return df, metadata
+
+    # TODO: Add filter for levels we don't want, like the one from lakeland
+    # query = f'sessDuration > {(level_time - level_overlap) * (lvl_end) + level_time}'
+    # df = df.query(query)
+    # metadata.append(
+    #     f'Describe Level Feats lvls {lvl_start} to {lvl_end}. Assuming WINDOW_SIZE_SECONDS={level_time} and WINDOW_OVERLAP_SECONDS={level_overlap}, filtered by ({query})')
+
+    range_prefix_max_list = [('lvl', None)]+cc_prefix_max_list
+    for i in range(len(range_feats_and_range)):
+        range_feats, rang = range_feats_and_range[i]
+        prefix, _ = range_prefix_max_list[i]
+        fromval, toval = rang[0], rang[-1]
+        sum_prefix = f'sum_{prefix}_{fromval}_to_{toval}_'
+        avg_prefix = f'avg_{prefix}_{fromval}_to_{toval}_'
+        for fn in range_feats:
+            tdf = df[[f'{prefix}{i}_{fn}' for i in rang]].fillna(0)
+            df[sum_prefix + fn] = tdf.sum(axis=1)
+            df[avg_prefix + fn] = tdf.mean(axis=1)
+    return df, metadata
+
+
 def get_feat_selection_lakeland(df,  max_lvl=9):
     """
     Gets the feature selection widget.
