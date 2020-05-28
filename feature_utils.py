@@ -32,6 +32,7 @@ from scipy import stats
 from typing import Optional, List, Iterable
 from zipfile import ZipFile
 
+
 def print_options(meta):
     """
     Takes in meta text and outputs text for an options group.
@@ -62,7 +63,8 @@ def print_options(meta):
     """
     if type(meta) == str:
         meta = meta.split('\n')
-    inner = ',\n\t'.join(["'GAME'", "'NAME'"] + [l[6:].split(' = ')[1] for l in meta if l.startswith('*arg*')] + ['[]'])
+    inner = ',\n\t'.join(["'GAME'", "'NAME'"] + [l[6:].split(' = ')[1]
+                                                 for l in meta if l.startswith('*arg*')] + ['[]'])
     print(f'options({inner}\n)')
 
 
@@ -103,6 +105,7 @@ def readCSVFromPath(path, index_cols):
     df = pd.read_csv(path, index_col=index_cols, comment='#')
     return df, metadata
 
+
 def getZippedLogDFbyURL(proc_zip_urls, index_cols=['sessionID']):
     """
 
@@ -117,7 +120,8 @@ def getZippedLogDFbyURL(proc_zip_urls, index_cols=['sessionID']):
         zf, meta = openZipFromURL(next_url)
         # put the data into a dataframe
         with zf.open(zf.namelist()[0]) as f:
-            df = pd.concat([df, pd.read_csv(f, index_col=index_cols, comment='#')], sort=True)
+            df = pd.concat(
+                [df, pd.read_csv(f, index_col=index_cols, comment='#')], sort=True)
         metadata.extend(meta)
     if len(index_cols) > 1:
         for i, col_name in enumerate(index_cols):
@@ -125,6 +129,7 @@ def getZippedLogDFbyURL(proc_zip_urls, index_cols=['sessionID']):
     else:
         df[index_cols[0]] = [x for x in df.index]
     return df, metadata
+
 
 def getLogDFbyPath(proc_paths, zipped=True, index_cols=['sessionID']):
     """
@@ -142,8 +147,9 @@ def getLogDFbyPath(proc_paths, zipped=True, index_cols=['sessionID']):
             next_file, meta = openZipFromPath(next_path)
             # put the data into a dataframe
             with next_file.open(next_file.namelist()[0]) as f:
-                df = pd.concat([df, pd.read_csv(f, index_col=index_cols, comment='#')], sort=True)
-        else: # CSVs, not zips
+                df = pd.concat(
+                    [df, pd.read_csv(f, index_col=index_cols, comment='#')], sort=True)
+        else:  # CSVs, not zips
             next_file, meta = readCSVFromPath(next_path, index_cols)
             # put the data into a dataframe
             df = pd.concat([df, next_file], sort=True)
@@ -180,10 +186,10 @@ def getLogDFbyPath(proc_paths, zipped=True, index_cols=['sessionID']):
 #     return df, metadata
 
 
-def get_lakeland_default_filter(lvlstart: Optional[int]=None, lvlend: Optional[bool]=None, no_debug: Optional[bool]=True,
-              min_sessActiveEventCount: Optional[int]=10,
-              min_lvlstart_ActiveEventCount: Optional[int]=3,
-              min_lvlend_ActiveEventCount: Optional[int]=3, min_sessDuration: Optional[int]=300, max_sessDuration: Optional[int]=None, cont: Optional[bool]=False) -> List[str]:
+def get_lakeland_default_filter(lvlstart: Optional[int] = None, lvlend: Optional[bool] = None, no_debug: Optional[bool] = True,
+                                min_sessActiveEventCount: Optional[int] = 10,
+                                min_lvlstart_ActiveEventCount: Optional[int] = 3,
+                                min_lvlend_ActiveEventCount: Optional[int] = 3, min_sessDuration: Optional[int] = 300, max_sessDuration: Optional[int] = None, cont: Optional[bool] = False) -> List[str]:
     """
 
     :param lvlstart: levelstart to be used for other parameters (None if not used)
@@ -200,15 +206,17 @@ def get_lakeland_default_filter(lvlstart: Optional[int]=None, lvlend: Optional[b
     get_lakeland_default_filter()
     query_list = []
 
-
     if no_debug:
         query_list.append('debug == 0')
     if min_sessActiveEventCount is not None:
-        query_list.append(f'sess_ActiveEventCount >= {min_sessActiveEventCount}')
+        query_list.append(
+            f'sess_ActiveEventCount >= {min_sessActiveEventCount}')
     if lvlstart is not None and min_lvlstart_ActiveEventCount is not None:
-        query_list.append(f'lvl{lvlstart}_ActiveEventCount >= {min_lvlstart_ActiveEventCount}')
+        query_list.append(
+            f'lvl{lvlstart}_ActiveEventCount >= {min_lvlstart_ActiveEventCount}')
     if lvlend is not None and min_lvlend_ActiveEventCount is not None:
-        query_list.append(f'lvl{lvlend}_ActiveEventCount >= {min_lvlend_ActiveEventCount}')
+        query_list.append(
+            f'lvl{lvlend}_ActiveEventCount >= {min_lvlend_ActiveEventCount}')
     if min_sessDuration is not None:
         query_list.append(f'sessDuration >= {min_sessDuration}')
     if max_sessDuration is not None:
@@ -305,6 +313,7 @@ def create_new_base_features(df, verbose=False):
 #         df[avg_prefix + fn] = tdf.mean(axis=1)
 #     return df, metadata
 
+
 def describe_lvl_feats(df, fbase_list, lvl_range):
     """
     Calculates sum/avg of given level base features (fnames without lvlN_ prefix) in the level range.
@@ -336,6 +345,7 @@ def describe_lvl_feats(df, fbase_list, lvl_range):
         df[avg_prefix + fn] = tdf.mean(axis=1)
     return df, metadata
 
+
 def get_feat_selection_lakeland(df,  max_lvl=9):
     """
     Gets the feature selection widget.
@@ -343,10 +353,10 @@ def get_feat_selection_lakeland(df,  max_lvl=9):
     :param max_lvl:
     :return:
     """
-    start_level = widgets.IntSlider(value=0,min=0,max=max_lvl,step=1,description='Start Level:',
-                                    disabled=False,continuous_update=False,orientation='horizontal',readout=True,readout_format='d')
-    end_level = widgets.IntSlider(value=0,min=0,max=max_lvl,step=1,description='End Level:',
-                                  disabled=False,continuous_update=False,orientation='horizontal',readout=True,readout_format='d')
+    start_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='Start Level:',
+                                    disabled=False, continuous_update=False, orientation='horizontal', readout=True, readout_format='d')
+    end_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='End Level:',
+                                  disabled=False, continuous_update=False, orientation='horizontal', readout=True, readout_format='d')
     level_selection = widgets.GridBox([start_level, end_level])
 
     def change_start_level(change):
@@ -355,17 +365,21 @@ def get_feat_selection_lakeland(df,  max_lvl=9):
             end_level.value = start_level.value
     start_level.observe(change_start_level, names="value")
 
-
     lvl_feats = sorted(set([f[5:] for f in df.columns if f.startswith('lvl')]))
-    sess_feats = sorted(set([f[5:] for f in df.columns if f.startswith('sess_')]))
-    other_feats = sorted(set([f for f in df.columns if not f.startswith('lvl') and not f.startswith('sess_')]))
-    selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats,'lvl'),
-                                        multi_checkbox_widget(sess_feats,'sess'),
-                                        multi_checkbox_widget(other_feats,'other'),
+    sess_feats = sorted(
+        set([f[5:] for f in df.columns if f.startswith('sess_')]))
+    other_feats = sorted(set([f for f in df.columns if not f.startswith(
+        'lvl') and not f.startswith('sess_')]))
+    selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats, 'lvl'),
+                                        multi_checkbox_widget(
+                                            sess_feats, 'sess'),
+                                        multi_checkbox_widget(
+                                            other_feats, 'other'),
                                         level_selection],
                                        layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
 
     return selection_widget
+
 
 def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
     """
@@ -375,22 +389,24 @@ def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
     :return:
     """
 
-    cc_prefix_max_list= cc_prefix_max_list or [];
+    cc_prefix_max_list = cc_prefix_max_list or []
     checkbox_widgets = []
     slider_widgets = []
     feats = set()
 
     for prefix, max_val in [('lvl', max_lvl)] + cc_prefix_max_list:
         start_val = widgets.IntSlider(value=0, min=0, max=max_val, step=1, description=f'Start {prefix}:',
-                                        disabled=False, continuous_update=False, orientation='horizontal', readout=True,
-                                        readout_format='d')
+                                      disabled=False, continuous_update=False, orientation='horizontal', readout=True,
+                                      readout_format='d')
         end_val = widgets.IntSlider(value=0, min=0, max=max_val, step=1, description=f'End {prefix}:',
                                     disabled=False, continuous_update=False, orientation='horizontal', readout=True,
                                     readout_format='d')
         val_selection = widgets.GridBox([start_val, end_val])
         slider_widgets.append(val_selection)
-        val_feats_set = set(['_'.join(f.split('_')[1:]) for f in df.columns if f.startswith(prefix)])
-        feats = feats.union([f'{prefix}{n}_{v}' for n in range(max_val) for v in val_feats_set])
+        val_feats_set = set(['_'.join(f.split('_')[1:])
+                             for f in df.columns if f.startswith(prefix)])
+        feats = feats.union(
+            [f'{prefix}{n}_{v}' for n in range(max_val+1) for v in val_feats_set])
         val_feats = sorted(val_feats_set)
         val_feats_checkbox = multi_checkbox_widget(val_feats, prefix)
         checkbox_widgets.append(val_feats_checkbox)
@@ -400,6 +416,7 @@ def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
                                        layout=widgets.Layout(grid_template_columns=f"repeat({len(slider_widgets)}, 500px)"))
 
     return selection_widget
+
 
 def get_feat_selection_waves(df, max_lvl=34):
     """
@@ -423,16 +440,22 @@ def get_feat_selection_waves(df, max_lvl=34):
 
     start_level.observe(change_start_level, names="value")
 
-    lvl_feats = sorted(set([''.join(f.split('_')[1:]) for f in df.columns if f.startswith('lvl')]))
-    sess_feats = sorted(set([f[7:] for f in df.columns if f.startswith('session')]))
-    other_feats = sorted(set([f for f in df.columns if not f.startswith('lvl') and not f.startswith('session')]))
+    lvl_feats = sorted(set([''.join(f.split('_')[1:])
+                            for f in df.columns if f.startswith('lvl')]))
+    sess_feats = sorted(
+        set([f[7:] for f in df.columns if f.startswith('session')]))
+    other_feats = sorted(set([f for f in df.columns if not f.startswith(
+        'lvl') and not f.startswith('session')]))
     selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats, 'lvl'),
-                                        multi_checkbox_widget(sess_feats, 'sess'),
-                                        multi_checkbox_widget(other_feats, 'other'),
+                                        multi_checkbox_widget(
+                                            sess_feats, 'sess'),
+                                        multi_checkbox_widget(
+                                            other_feats, 'other'),
                                         level_selection],
                                        layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
 
     return selection_widget
+
 
 def get_selected_feature_list(selection_widget, session_prefix, cc_prefix_max_list=None):
     """
@@ -442,7 +465,8 @@ def get_selected_feature_list(selection_widget, session_prefix, cc_prefix_max_li
     """
     cc_prefix_max_list = cc_prefix_max_list or []
     prefix_list = ['lvl']+[prefix_max[0] for prefix_max in cc_prefix_max_list]
-    other_feats = [s.description for s in selection_widget.children[-1].children[1].children if s.value]
+    other_feats = [
+        s.description for s in selection_widget.children[-1].children[1].children if s.value]
     range_feats_and_range = get_range_feats_and_range(selection_widget)
     range_feats_list = []
     for i in range(len(range_feats_and_range)):
@@ -451,6 +475,7 @@ def get_selected_feature_list(selection_widget, session_prefix, cc_prefix_max_li
         rang = range_feats_and_range[i][1]
         range_feats_list += [f'{prefix}{n}_{f}' for f in feats for n in rang]
     return range_feats_list + other_feats
+
 
 def get_range_feats_and_range(selection_widget) -> (List[str], Iterable):
     """
@@ -467,7 +492,8 @@ def get_range_feats_and_range(selection_widget) -> (List[str], Iterable):
         slider = widgets[i+num_range_groups]
         start_widget = slider.children[0]
         end_widget = slider.children[1]
-        feat_list = [s.description for s in checkbox.children[1].children if s.value]
+        feat_list = [
+            s.description for s in checkbox.children[1].children if s.value]
         val_range = range(start_widget.value, end_widget.value + 1)
         ret.append((feat_list, val_range))
 
@@ -476,12 +502,14 @@ def get_range_feats_and_range(selection_widget) -> (List[str], Iterable):
 
 def multi_checkbox_widget(descriptions, category):
     """ Widget with a search field and lots of checkboxes """
-    search_widget = widgets.Text(layout={'width': '400px'}, description=f'Search {category}:')
+    search_widget = widgets.Text(
+        layout={'width': '400px'}, description=f'Search {category}:')
     options_dict = {description: widgets.Checkbox(description=description, value=False,
                                                   layout={'overflow-x': 'scroll', 'width': '400px'}, indent=False) for
                     description in descriptions}
     options = [options_dict[description] for description in descriptions]
-    options_widget = widgets.VBox(options, layout={'overflow': 'scroll', 'height': '400px'})
+    options_widget = widgets.VBox(
+        options, layout={'overflow': 'scroll', 'height': '400px'})
     multi_select = widgets.VBox([search_widget, options_widget])
 
     # Wire the search field to the checkboxes
@@ -543,10 +571,10 @@ def reduce_outliers(df, z_thresh, show_graphs=True, outpath=None):
     if z_thresh is None:
         return df, meta
 
-
     z = np.abs(stats.zscore(df))
     no_outlier_df = df[(z < z_thresh).all(axis=1)]
-    meta.append(f'Removed points with abs(ZScore) >= {z_thresh}. Reduced num rows: {len(no_outlier_df)}')
+    meta.append(
+        f'Removed points with abs(ZScore) >= {z_thresh}. Reduced num rows: {len(no_outlier_df)}')
     title = f'Raw Boxplot ZThresh={z_thresh} n={len(no_outlier_df)}'
     no_outlier_df.plot(kind='box', title=title, figsize=(20, 5))
     if outpath:
@@ -554,6 +582,9 @@ def reduce_outliers(df, z_thresh, show_graphs=True, outpath=None):
         plt.savefig(savepath)
     plt.close()
     return no_outlier_df, meta
+
+
+jw_cc_max = [('obj', 80), ('int', 188), ('Q', 18)]
 
 
 def full_filter(df, import_meta, options, outpath) -> (pd.DataFrame, List[str]):
@@ -578,12 +609,17 @@ def full_filter(df, import_meta, options, outpath) -> (pd.DataFrame, List[str]):
     #     aggregate_df, aggregate_meta = describe_lvl_feats_waves(new_feat_df, options.lvlfeats, options.lvlrange)
     # else:
     #     assert False
-    new_feat_df, new_feat_meta = create_new_base_features(filtered_df, **options.new_feat_args)
-    aggregate_df, aggregate_meta = describe_lvl_feats(new_feat_df, options.lvlfeats, options.lvlrange)
+    new_feat_df, new_feat_meta = create_new_base_features(
+        filtered_df, **options.new_feat_args)
+    aggregate_df, aggregate_meta = describe_lvl_feats(
+        new_feat_df, options.lvlfeats, options.lvlrange)
     reduced_df, reduced_meta = reduce_feats(aggregate_df, options.finalfeats)
-    reduced_df = reduced_df.fillna(0) # hack while NaNs are popping up in aggregate df or newfeatdf TODO: Fix this. It never used to be an issue.
-    final_df, outlier_meta = reduce_outliers(reduced_df, options.zthresh, outpath=outpath)
-    final_meta = import_meta + filter_meta + new_feat_meta + aggregate_meta + reduced_meta + outlier_meta
+    # hack while NaNs are popping up in aggregate df or newfeatdf TODO: Fix this. It never used to be an issue.
+    reduced_df = reduced_df.fillna(0)
+    final_df, outlier_meta = reduce_outliers(
+        reduced_df, options.zthresh, outpath=outpath)
+    final_meta = import_meta + filter_meta + new_feat_meta + \
+        aggregate_meta + reduced_meta + outlier_meta
     return final_df, final_meta
 
 
