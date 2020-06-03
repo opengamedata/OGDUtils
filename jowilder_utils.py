@@ -1,3 +1,4 @@
+from google.colab import files
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -23,7 +24,7 @@ def response_boxplot(df, category, verbose=False):
             if verbose:
                 print(
                     f'{f} # chose {choice}: {num_chose} ({round(num_chose/len(df)*100)}%). Avg {mean}, std {std}.')
-    plt.suptitle('')
+    plt.suptitle(f'{category} Boxplot')
     fig.show()
 
 
@@ -52,3 +53,90 @@ def group_by_func(df, func, title='', show=True):
         if show:
             display(result_dfs[r0])
     return result_dfs
+
+
+def html_stats(df):
+    html_strs = ['<div class="container">', '<h3>{Stats}</h3>']
+    qs = ['EFL_yes_no', 'skill_low_med_high', 'enjoy_high_med_low_none']
+    html_strs.append(f'<p> Total pop {len(df)} </p>')
+    for i, f in enumerate(['R0_quiz_response', 'R1_quiz_response', 'R2_quiz_response', ]):
+        html_strs.append(f'<p> {qs[i]}</p>')
+        for choice in range(df[f].min(), df[f].max()+1):
+            query = f"{f}=={choice}"
+            cat_df = df.query(query)
+            num_chose = len(cat_df)
+            html_strs.append(
+                f'<p>{f} # chose {choice}: {num_chose} ({round(num_chose/len(df)*100)}%).</p>')
+    return '\n'.join(html_strs+['</div>'])
+
+
+def full_html(base_df, title_list, dfs_list, suptitle=None):
+    HEADER = '''<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <style>
+    .flex-container {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .container {
+      border: thick solid black;
+      padding: 10px;
+      margin: 5px;
+    }
+
+    .container table:nth-of-type(2) td {
+      background-color: rgb(161, 161, 230);
+    }
+
+    .container table:nth-of-type(2) th {
+      background-color: rgb(20, 20, 194);
+      color: white;
+    }
+
+    .container table:nth-of-type(2n-1) td {
+      background-color: rgb(235, 158, 158);
+    }
+
+    .container table:nth-of-type(2n-1) th {
+      background-color: rgb(160, 11, 11);
+      color: white;
+    }
+    .break {
+  flex-basis: 100%;
+  height: 0;
+}
+  </style>
+  <div class="flex-container">'''
+    FOOTER = '''  </div>
+    </body>
+
+    </html>'''
+    def table_header(title): return f'''    <div class="container">
+        <h3>{title}</h3>'''
+    table_footer = '''    </div>'''
+    def table_html(title, dfs): return '\n'.join([table_header(
+        title), "<p>Natives:</p>", dfs[0].to_html(), "<p>Nonnatives:</p>", dfs[1].to_html(), table_footer])
+
+    if suptitle is not None:
+        suptitle = f'<h2>{suptitle}</h2>\n<div class="break"></div> <!-- break -->'
+    else:
+        suptitle = ''
+    return '\n'.join([HEADER, suptitle, html_stats(base_df)] +
+                     [table_html(t, dfs) for t, dfs in zip(title_list, dfs_list)] +
+                     [FOOTER])
+
+
+def download_full_html(base_df, title_list, dfs_list, filename, suptitle=None):
+    with open(filename, 'w+') as f:
+        f.write(full_html(base_df, title_list, dfs_list, suptitle=suptitle))
+        print("Wrote to", filename)
+    files.download(filename)
