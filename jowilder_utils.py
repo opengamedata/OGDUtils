@@ -55,6 +55,67 @@ def group_by_func(df, func, title='', show=True):
     return result_dfs
 
 
+def standard_group_by_func(fulldf, per_category_stats_list=['sess_count_clicks',
+                                                            'sess_count_hovers',
+                                                            'sess_meaningful_action_count',
+                                                            'sess_EventCount',
+                                                            'sess_count_notebook_uses',
+                                                            'sess_avg_time_between_clicks',
+                                                            'sess_first_enc_words_read',
+                                                            'sess_first_enc_boxes_read',
+                                                            'sess_num_enc',
+                                                            'sess_first_enc_duration',
+                                                            'sess_first_enc_avg_wps',
+                                                            'sess_first_enc_var_wps',
+                                                            'sess_first_enc_avg_tbps',
+                                                            'sess_first_enc_var_tbps',
+                                                            'sess_start_obj',
+                                                            'sess_end_obj',
+                                                            'start_level',
+                                                            'max_level',
+                                                            'sessDuration']):
+    dfs_list = []
+    title_list = []
+
+    def df_func(df, tdf0, tdf1, tdf2): return len(tdf2)
+    title = 'count'
+    dfs = group_by_func(fulldf, df_func, title)
+    dfs_list.append(dfs)
+    title_list.append(title)
+
+    def df_func(df, tdf0, tdf1, tdf2): return round(len(tdf2)/len(df)*100, 2)
+    title = 'percent total pop'
+    dfs = group_by_func(fulldf, df_func, title)
+    dfs_list.append(dfs)
+    title_list.append(title)
+
+    def df_func(df, tdf0, tdf1, tdf2): return round(len(tdf2)/len(tdf0)*100, 2)
+    title = 'percent native class pop'
+    dfs = group_by_func(fulldf, df_func, title)
+    dfs_list.append(dfs)
+    title_list.append(title)
+
+    for category in per_category_stats_list:
+        df_func = get_avg_std_df_func(category)
+        title = f'(avg, std) {category}'
+        dfs = group_by_func(fulldf, df_func, title)
+        dfs_list.append(dfs)
+        title_list.append(title)
+    return title_list, dfs_list
+
+
+def get_avg_std_df_func(category_name):
+    def inner(df, tdf0, tdf1, tdf2):
+        mean = tdf2[category_name].mean()
+        std = tdf2[category_name].std()
+        if not pd.isna(mean):
+            mean = round(mean, 2)
+        if not pd.isna(std):
+            std = round(std, 2)
+        return (mean, std)
+    return inner
+
+
 def html_stats(df):
     html_strs = ['<div class="container">', '<h3>{Stats}</h3>']
     qs = ['EFL_yes_no', 'skill_low_med_high', 'enjoy_high_med_low_none']
