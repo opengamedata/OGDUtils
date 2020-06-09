@@ -659,5 +659,25 @@ def full_filter(df, import_meta, options, outpath) -> (pd.DataFrame, List[str]):
     return final_df, final_meta
 
 
+def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permissions='w+'):
+    if csv_name.endswith(('.tsv', '.csv')):
+        extension = csv_name[-4:]
+        csv_name = csv_name[:-4]
+    else:
+        extension = '.csv'
+    separator = '\t' if extension == '.tsv' else ','
+    meta_name = meta_name or csv_name + '_meta.txt'
+    meta_text = 'Metadata:\n'+'\n'.join(meta_list)
+    with open(os.path.join(save_dir, meta_name), permissions) as f:
+        f.write(meta_text)
+    with open(os.path.join(save_dir, csv_name)+extension, permissions) as f:
+        for l in meta_text.splitlines():
+            f.write(f'# {l}\n')
+        f.write('\n')
+        df.to_csv(f, sep=separator)
+
+    return None, []
+
+
 if __name__ == '__main__':
     pass
