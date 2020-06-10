@@ -679,5 +679,17 @@ def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permiss
     return None, []
 
 
+def open_csv_from_path_with_meta(csv_fpath, index_col=0):
+    metadata = []
+    with open(csv_fpath) as f:
+        for line in f.readlines():
+            if line.startswith('#'):
+                metadata.append(line[2:].strip())
+            else:
+                break
+    df = pd.read_csv(csv_fpath, comment='#', index_col=index_col)
+    return df, metadata
+
+
 if __name__ == '__main__':
     pass
