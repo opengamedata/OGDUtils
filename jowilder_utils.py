@@ -6,6 +6,7 @@ from IPython.display import display
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from imblearn.pipeline import make_pipeline
+from sklearn.compose import ColumnTransformer
 
 
 def response_boxplot(df, category, verbose=False):
@@ -326,7 +327,7 @@ QA_1_cats = [['0', 'A', 'B', 'C', 'D'],
 
 
 
-def preprocess_df(df,scaler=StandardScaler(), sampler='passthrough', imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
+def preprocess_df(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
     """
     By default has a number of steps:
     1. drops columns if present:
@@ -336,7 +337,7 @@ def preprocess_df(df,scaler=StandardScaler(), sampler='passthrough', imputer=Sim
     2. Creates a preprocessor for all non-y columns and non-boolean columns with the following steps:
        a. Standard Scaler (0 mean, 1 std)
        b. Simple Imputer(strategy='constant') (fill NaN with 0)
-       c. Sampler ('passthrough' by default, i.e. not present by default)
+       c. Sampler (None by default, i.e. not present by default)
        d. Standard Scaler again to assure that data is still 0 mean 1 std
     3. Fits the preprocessor to the given X
     4. returns the fitted preprocessor (sklearn pipeline), and numpy array of preprocessed X data
