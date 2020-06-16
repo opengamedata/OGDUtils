@@ -3,6 +3,9 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from IPython.display import display
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from imblearn.pipeline import make_pipeline
 
 
 def response_boxplot(df, category, verbose=False):
@@ -320,3 +323,54 @@ QA_1_cats = [['0', 'A', 'B', 'C', 'D'],
              ['0', '?', 'X', 'Y', 'Z', 'b', 'c', 'd', 'e', 'f'],
              ['0', 'X', 'Y', 'b', 'c', 'd', 'e', 'f'],
              ['0', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f']]
+
+
+
+def preprocess_df(df,scaler=StandardScaler(), sampler='passthrough', imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
+    """
+    By default has a number of steps:
+    1. drops columns if present:
+       - [f'Q{q}_answers' for q in range(19)]
+       - ["play_year", "play_month", "play_day", "play_hour", "play_minute", "play_second"]
+       - ["_continue", "continue", "save_code", "music", "hq", "fullscreen", "persistentSessionID"]
+    2. Creates a preprocessor for all non-y columns and non-boolean columns with the following steps:
+       a. Standard Scaler (0 mean, 1 std)
+       b. Simple Imputer(strategy='constant') (fill NaN with 0)
+       c. Sampler ('passthrough' by default, i.e. not present by default)
+       d. Standard Scaler again to assure that data is still 0 mean 1 std
+    3. Fits the preprocessor to the given X
+    4. returns the fitted preprocessor (sklearn pipeline), and numpy array of preprocessed X data
+    Note: the preprocessor will have to be refit with training data if
+    :param df: jowilder dataframe
+    :param scaler: sklearn compatible scaler
+    :param sampler: sklearn compatible sampler
+    :param imputer: sklearn compatible imputer
+    :param pipeline_order: String representing the order of the pipeline, where 'Sc' refers to scaler, 'Im' refers to imputer, 'Sa' refers to sampler.
+    :return: fitted preprocessor (sklearn pipeline), numpy array of preprocessed X data
+    """
+    pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
+    pipeline_dict = {
+        'Sc':scaler,
+        'Sa':sampler,
+        'Im':imputer,
+    }
+    pipeline_list = [pipeline_dict[s] for s in pipeline_strings]
+    df = df.copy()
+    df = df.drop(
+            [f'Q{q}_answers' for q in range(19)] + ["play_year", "play_month", "play_day", "play_hour", "play_minute",
+                                                    "play_second",
+                                                    "_continue", "continue", "save_code", "music", "hq", "fullscreen",
+                                                    "persistentSessionID", ], axis=1, errors='ignore')
+    num_preprocessor = make_pipeline(*pipeline_list)
+    y_cols = [col for col in df.columns if 'quiz_response' in col]
+    bool_cols = [col for col in df.select_dtypes(include=['int64'])
+                    if np.isin(df[col].dropna().unique(), [0, 1]).all() and
+                    col not in y_cols]
+    int_cols = [col for col in df.columns if col not in bool_cols and col not in y_cols]
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', num_preprocessor, int_cols),
+            ('cat', 'passthrough', bool_cols)])
+    X_preprocessed = preprocessor.fit_transform(df)
+
+    return preprocessor, X_preprocessed
