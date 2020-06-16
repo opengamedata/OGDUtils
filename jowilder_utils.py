@@ -374,7 +374,7 @@ def get_preprocessor(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImp
     return preprocessor
 
 
-def separate_columns(df) -> (list[str], list[str], list[str]):
+def separate_columns(df) -> (list, list, list):
     """
 
     :param df:
