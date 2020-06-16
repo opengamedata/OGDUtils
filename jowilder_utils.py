@@ -327,10 +327,10 @@ QA_1_cats = [['0', 'A', 'B', 'C', 'D'],
 
 
 
-def preprocess_df(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
+def get_preprocessor(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
     """
     By default has a number of steps:
-    1. drops columns if present:
+    1. drops columns from use in preprocessor if present:
        - [f'Q{q}_answers' for q in range(19)]
        - ["play_year", "play_month", "play_day", "play_hour", "play_minute", "play_second"]
        - ["_continue", "continue", "save_code", "music", "hq", "fullscreen", "persistentSessionID"]
@@ -356,22 +356,33 @@ def preprocess_df(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImpute
         'Im':imputer,
     }
     pipeline_list = [pipeline_dict[s] for s in pipeline_strings]
+    num_preprocessor = make_pipeline(*pipeline_list)
+
     df = df.copy()
     df = df.drop(
             [f'Q{q}_answers' for q in range(19)] + ["play_year", "play_month", "play_day", "play_hour", "play_minute",
                                                     "play_second",
                                                     "_continue", "continue", "save_code", "music", "hq", "fullscreen",
                                                     "persistentSessionID", ], axis=1, errors='ignore')
-    num_preprocessor = make_pipeline(*pipeline_list)
+
+    y_cols, bool_cols, int_cols = separate_columns(df)
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', num_preprocessor, int_cols),
+            ('cat', 'passthrough', bool_cols)],
+        remainder='drop')
+    return preprocessor
+
+
+def separate_columns(df) -> (list[str], list[str], list[str]):
+    """
+
+    :param df:
+    :return: tuple of lists of column names for y_columns, bool_columns, and integer_columns
+    """
     y_cols = [col for col in df.columns if 'quiz_response' in col]
     bool_cols = [col for col in df.select_dtypes(include=['int64'])
                     if np.isin(df[col].dropna().unique(), [0, 1]).all() and
                     col not in y_cols]
     int_cols = [col for col in df.columns if col not in bool_cols and col not in y_cols]
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', num_preprocessor, int_cols),
-            ('cat', 'passthrough', bool_cols)])
-    X_preprocessed = preprocessor.fit_transform(df)
-
-    return preprocessor, X_preprocessed
+    return y_cols, bool_cols, int_cols
