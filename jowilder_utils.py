@@ -339,11 +339,11 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
        a. Standard Scaler (0 mean, 1 std)
        b. Simple Imputer(strategy='constant') (fill NaN with 0)
     3. Fits the preprocessor to the given X
-    4. returns the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe, and an unprocessed Y df
+    4. returns the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe
     :param df: jowilder dataframe
     :param scaler: sklearn compatible scaler
     :param imputer: sklearn compatible imputer
-    :return: the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe, and an unprocessed Y df
+    :return: the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe
     """
     df = df.drop(
             [f'Q{q}_answers' for q in range(19)] + ["play_year", "play_month", "play_day", "play_hour", "play_minute",
@@ -352,8 +352,6 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
                                                     "persistentSessionID", ], axis=1, errors='ignore').copy()
     y_cols, bool_cols, int_cols = separate_columns(df)
     X = df.loc[:,bool_cols+int_cols]
-    y = df.loc[:,y_cols]
-    col_str_to_int = lambda col_strs: [X.columns.get_loc(s) for s in col_strs]
 
     # too complicated to allow for pipeline order
     # pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
@@ -379,14 +377,33 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
     #         raise ValueError("Pipeline substrings must be Sa Sc or Im")
     #     transformers.append((name, transformer, cols))
 
-
+    col_str_to_int = lambda col_strs: [X.columns.get_loc(s) for s in col_strs]
     column_transformer = ColumnTransformer(
         transformers=[
             ('num', make_pipeline(scaler,imputer), col_str_to_int(int_cols)),
             ('bool', 'passthrough', col_str_to_int(bool_cols))
         ],
         remainder='passthrough')
-    return column_transformer, X, y
+    return column_transformer, X
+
+def get_ys(df):
+    """
+
+    :rtype: dictionary of y columns (df series). keys: y0,y1,y2,y1_bin
+    """
+    y0 = df["R0_quiz_response"].astype('category')
+    y1 = df["R1_quiz_response"].astype('category')
+    y2 = df["R2_quiz_response"].astype('category')
+    y1_bin = df["R1_quiz_response_bin"].astype('category')
+    y2_bin = df['R2_quiz_response_bin'].astype('category')
+    ys = {
+        'y0': y0,
+        'y1': y1,
+        'y2': y2,
+        'y1_bin': y1_bin,
+        'y2_bin': y2_bin
+    }
+    return ys
 
 
 def separate_columns(df) -> (list, list, list):
