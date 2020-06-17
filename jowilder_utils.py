@@ -1,4 +1,4 @@
-from google.colab import files
+# from google.colab import files
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -59,7 +59,8 @@ def group_by_func(df, func, title='', show=True):
     return result_dfs
 
 
-def standard_group_by_func(fulldf, per_category_stats_list=['sess_count_clicks',
+def standard_group_by_func(fulldf, per_category_stats_list=None):
+    per_category_stats_list = None or ['sess_count_clicks',
                                                             'sess_count_hovers',
                                                             'sess_meaningful_action_count',
                                                             'sess_EventCount',
@@ -77,7 +78,7 @@ def standard_group_by_func(fulldf, per_category_stats_list=['sess_count_clicks',
                                                             'sess_end_obj',
                                                             'start_level',
                                                             'max_level',
-                                                            'sessDuration']):
+                                                            'sessDuration']
     dfs_list = []
     title_list = []
 
@@ -327,7 +328,7 @@ QA_1_cats = [['0', 'A', 'B', 'C', 'D'],
 
 
 
-def get_preprocessor(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImputer(strategy='constant'), pipeline_order='ScImSaSc'):
+def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy='constant')):
     """
     By default has a number of steps:
     1. drops columns from use in preprocessor if present:
@@ -337,41 +338,55 @@ def get_preprocessor(df,scaler=StandardScaler(), sampler=None, imputer=SimpleImp
     2. Creates a preprocessor for all non-y columns and non-boolean columns with the following steps:
        a. Standard Scaler (0 mean, 1 std)
        b. Simple Imputer(strategy='constant') (fill NaN with 0)
-       c. Sampler (None by default, i.e. not present by default)
-       d. Standard Scaler again to assure that data is still 0 mean 1 std
     3. Fits the preprocessor to the given X
-    4. returns the fitted preprocessor (sklearn pipeline), and numpy array of preprocessed X data
-    Note: the preprocessor will have to be refit with training data if
+    4. returns the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe, and an unprocessed Y df
     :param df: jowilder dataframe
     :param scaler: sklearn compatible scaler
-    :param sampler: sklearn compatible sampler
     :param imputer: sklearn compatible imputer
-    :param pipeline_order: String representing the order of the pipeline, where 'Sc' refers to scaler, 'Im' refers to imputer, 'Sa' refers to sampler.
-    :return: fitted preprocessor (sklearn pipeline), numpy array of preprocessed X data
+    :return: the unfitted preprocessor (sklearn pipeline), and the unprocessed X dataframe, and an unprocessed Y df
     """
-    pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
-    pipeline_dict = {
-        'Sc':scaler,
-        'Sa':sampler,
-        'Im':imputer,
-    }
-    pipeline_list = [pipeline_dict[s] for s in pipeline_strings]
-    num_preprocessor = make_pipeline(*pipeline_list)
-
-    df = df.copy()
     df = df.drop(
             [f'Q{q}_answers' for q in range(19)] + ["play_year", "play_month", "play_day", "play_hour", "play_minute",
                                                     "play_second",
                                                     "_continue", "continue", "save_code", "music", "hq", "fullscreen",
-                                                    "persistentSessionID", ], axis=1, errors='ignore')
-
+                                                    "persistentSessionID", ], axis=1, errors='ignore').copy()
     y_cols, bool_cols, int_cols = separate_columns(df)
-    preprocessor = ColumnTransformer(
+    X = df.loc[:,bool_cols+int_cols]
+    y = df.loc[:,y_cols]
+    col_str_to_int = lambda col_strs: [X.columns.get_loc(s) for s in col_strs]
+
+    # too complicated to allow for pipeline order
+    # pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
+    # transformers = []
+    # num_sa, num_sc, num_im = 0,0,0
+    # for s in pipeline_strings:
+    #     if s == 'Sa':
+    #         transformer = make_pipeline(sampler)
+    #         cols = int_cols + bool_cols
+    #         name = f'{s}{num_sa}'
+    #         num_sa += 1
+    #     elif s == 'Sc':
+    #         transformer = scaler
+    #         name = f'{s}{num_sc}'
+    #         cols = int_cols
+    #         num_sc += 1
+    #     elif s == 'Im':
+    #         transformer = imputer
+    #         name = f'{s}{num_im}'
+    #         cols = int_cols
+    #         num_im += 1
+    #     else:
+    #         raise ValueError("Pipeline substrings must be Sa Sc or Im")
+    #     transformers.append((name, transformer, cols))
+
+
+    column_transformer = ColumnTransformer(
         transformers=[
-            ('num', num_preprocessor, int_cols),
-            ('cat', 'passthrough', bool_cols)],
-        remainder='drop')
-    return preprocessor
+            ('num', make_pipeline(scaler,imputer), col_str_to_int(int_cols)),
+            ('bool', 'passthrough', col_str_to_int(bool_cols))
+        ],
+        remainder='passthrough')
+    return column_transformer, X, y
 
 
 def separate_columns(df) -> (list, list, list):
