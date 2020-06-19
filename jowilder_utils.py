@@ -406,15 +406,19 @@ def get_ys(df):
     return ys
 
 
-def separate_columns(df) -> (list, list, list):
+def separate_columns(df, bool_dtype='int64') -> (list, list, list):
     """
 
     :param df:
+    :param bool_dtype: Defaults to 'int64'. Should be int64 if coming from import csv otherwise could be 'int8'
+    if coming from the pd dummies.
     :return: tuple of lists of column names for y_columns, bool_columns, and integer_columns
     """
     y_cols = [col for col in df.columns if 'quiz_response' in col]
-    bool_cols = [col for col in df.select_dtypes(include=['int64'])
+    bool_cols = [col for col in df.select_dtypes(include=[bool_dtype])
                     if np.isin(df[col].dropna().unique(), [0, 1]).all() and
                     col not in y_cols]
     int_cols = [col for col in df.columns if col not in bool_cols and col not in y_cols]
+    if not bool_cols:
+        print('Warning! No bool columns. Consider changing bool_dtype="int_64" to "int8"')
     return y_cols, bool_cols, int_cols
