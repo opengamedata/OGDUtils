@@ -389,20 +389,20 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
 def get_ys(df):
     """
 
-    :rtype: dictionary of y columns (df series). keys: y0,y1,y2,y1_bin
+    :rtype: dictionary of y columns (df series). keys: y0,y1,y2,y1_bin,y2_bin,y1_bin_x,y2_bin_x
     """
-    y0 = df["R0_quiz_response"].astype('category')
-    y1 = df["R1_quiz_response"].astype('category')
-    y2 = df["R2_quiz_response"].astype('category')
-    y1_bin = df["R1_quiz_response_bin"].astype('category')
-    y2_bin = df['R2_quiz_response_bin'].astype('category')
-    ys = {
-        'y0': y0,
-        'y1': y1,
-        'y2': y2,
-        'y1_bin': y1_bin,
-        'y2_bin': y2_bin
-    }
+    ys = {}
+    for key,y_col in [
+        ('y0','R0_quiz_response'),
+        ('y1', 'R1_quiz_response'),
+        ('y2', 'R2_quiz_response'),
+        ('y1_bin', 'R1_quiz_response_bin'),
+        ('y1_bin_x', 'R1_quiz_response_bin_x'),
+        ('y2_bin', 'R2_quiz_response_bin_x'),
+        ('y2_bin_x', 'R2_quiz_response_bin_x'),
+    ]:
+        if y_col in df.columns:
+            ys[key] = df.loc[:,y_col].astype('category').copy()
     return ys
 
 
