@@ -398,7 +398,7 @@ def get_ys(df):
         ('y2', 'R2_quiz_response'),
         ('y1_bin', 'R1_quiz_response_bin'),
         ('y1_bin_x', 'R1_quiz_response_bin_x'),
-        ('y2_bin', 'R2_quiz_response_bin_x'),
+        ('y2_bin', 'R2_quiz_response_bin'),
         ('y2_bin_x', 'R2_quiz_response_bin_x'),
     ]:
         if y_col in df.columns:
