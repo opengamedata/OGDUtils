@@ -31,6 +31,8 @@ from matplotlib import pyplot as plt
 from scipy import stats
 from typing import Optional, List, Iterable
 from zipfile import ZipFile
+from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix
+import imblearn.pipeline
 
 
 def print_options(meta):
@@ -689,6 +691,39 @@ def open_csv_from_path_with_meta(csv_fpath, index_col=0):
                 break
     df = pd.read_csv(csv_fpath, comment='#', index_col=index_col)
     return df, metadata
+
+def get_PSPC_pipeline(classifier, preprocessor=None, sampler=None):
+    """
+Returns a Preporcessor Sampler Preprocessor Classifier pipeline
+imblearn.pipeline.make_pipeline(preprocessor, sampler, copy.deepcopy(preprocessor),classifier)
+    :param classifier: sklearn compatible classifier
+    :param preprocessor: sklearn compatible classifier (Make sure it won't change the data if applied iteratively!)
+    :param sampler: sklearn compatible sampler
+    :return:
+    """
+    clf = imblearn.pipeline.make_pipeline(preprocessor, sampler, copy.deepcopy(preprocessor),classifier)
+    return clf
+
+
+
+
+    # model_name = f'{sampler} {classifier}'
+#     if verbose:
+#         print(f'Running {model_name}.')
+#     clf.fit(X_train, y_train)
+#     cur_model = clf
+#     if verbose:
+#         print("model trained to: %.3f" % clf.score(X_train, y_train))
+#         print("model score: %.3f" % clf.score(X_test, y_test))
+#     return clf
+#
+# def f1_auc_acc(clf, X_test, y_test):
+#     y_pred = clf.predict(X_test)
+#     y_prob = clf.predict_proba(X_test)[:,1]
+#     f1 = f1_score(y_true=y_test, y_pred=y_pred)
+#     auc = roc_auc_score(y_true=y_test, y_score=y_prob)
+#     acc = clf.score(y)
+#     return f1, auc
 
 
 if __name__ == '__main__':
