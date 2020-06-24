@@ -692,6 +692,12 @@ def open_csv_from_path_with_meta(csv_fpath, index_col=0):
     df = pd.read_csv(csv_fpath, comment='#', index_col=index_col)
     return df, metadata
 
+def remove_nan_labels(X, y):
+    nonnull_indices = ~y.isna()
+    ret_X = X.loc[nonnull_indices, :].copy()
+    ret_y = y.loc[nonnull_indices].copy()
+    return ret_X, ret_y
+
 def get_PSPC_pipeline(classifier, preprocessor=None, sampler=None):
     """
 Returns a Preporcessor Sampler Preprocessor Classifier pipeline
