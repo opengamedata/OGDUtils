@@ -328,7 +328,7 @@ QA_1_cats = [['0', 'A', 'B', 'C', 'D'],
 
 
 
-def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy='constant')):
+def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy='constant'), bool_dtype = 'int64'):
     """
     By default has a number of steps:
     1. drops columns from use in preprocessor if present:
