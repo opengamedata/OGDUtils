@@ -670,9 +670,9 @@ def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permiss
         extension = '.csv'
     meta_list.append(f'OUTPUT_SHAPE: {df.shape}')
     meta_list.append(f'OUTPUT_FILE: {csv_name}')
-    meta_list.append(f'OUTPUT_DATE:' {datetime.now()})
+    meta_list.append(f'OUTPUT_DATE: {datetime.now()}')
     if add_columns:
-        meta_list.append(f'OUTPUT_COLUMNS:', {sorted(df.columns)})
+        meta_list.append(f'OUTPUT_COLUMNS: {sorted(list(df.columns))}')
     separator = '\t' if extension == '.tsv' else ','
     meta_name = meta_name or csv_name + '_meta.txt'
     meta_text = 'Metadata:\n'+'\n'.join(meta_list)
