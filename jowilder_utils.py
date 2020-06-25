@@ -351,7 +351,7 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
                                                     "_continue", "continue", "save_code", "music", "hq", "fullscreen",
                                                     "persistentSessionID", ], axis=1, errors='ignore').copy()
     y_cols, bool_cols, int_cols = separate_columns(df, bool_dtype = bool_dtype)
-    X = df.loc[:,bool_cols+int_cols]
+    X = df.loc[:,int_cols+bool_cols]
 
     # too complicated to allow for pipeline order
     # pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
@@ -383,7 +383,7 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
             ('num', make_pipeline(scaler,imputer), col_str_to_int(int_cols)),
             ('bool', 'passthrough', col_str_to_int(bool_cols))
         ],
-        remainder='passthrough')
+        remainder='drop')
     return column_transformer, X
 
 def get_ys(df):
