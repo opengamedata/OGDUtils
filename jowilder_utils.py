@@ -350,7 +350,7 @@ def get_preprocessor(df,scaler=StandardScaler(), imputer=SimpleImputer(strategy=
                                                     "play_second",
                                                     "_continue", "continue", "save_code", "music", "hq", "fullscreen",
                                                     "persistentSessionID", ], axis=1, errors='ignore').copy()
-    y_cols, bool_cols, int_cols = separate_columns(df)
+    y_cols, bool_cols, int_cols = separate_columns(df, bool_dtype = bool_dtype)
     X = df.loc[:,bool_cols+int_cols]
 
     # too complicated to allow for pipeline order
