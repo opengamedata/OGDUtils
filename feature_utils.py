@@ -33,6 +33,7 @@ from typing import Optional, List, Iterable
 from zipfile import ZipFile
 from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix
 import imblearn.pipeline
+from datetime import datetime
 
 
 def print_options(meta):
@@ -661,12 +662,17 @@ def full_filter(df, import_meta, options, outpath) -> (pd.DataFrame, List[str]):
     return final_df, final_meta
 
 
-def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permissions='w+'):
+def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permissions='w+', add_columns=True):
     if csv_name.endswith(('.tsv', '.csv')):
         extension = csv_name[-4:]
         csv_name = csv_name[:-4]
     else:
         extension = '.csv'
+    meta_list.append(f'OUTPUT_SHAPE: {df.shape}')
+    meta_list.append(f'OUTPUT_FILE: {csv_name}')
+    meta_list.append(f'OUTPUT_DATE:' {datetime.now()})
+    if add_columns:
+        meta_list.append(f'OUTPUT_COLUMNS:', {sorted(df.columns)})
     separator = '\t' if extension == '.tsv' else ','
     meta_name = meta_name or csv_name + '_meta.txt'
     meta_text = 'Metadata:\n'+'\n'.join(meta_list)
