@@ -34,6 +34,8 @@ from zipfile import ZipFile
 from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix
 import imblearn.pipeline
 from datetime import datetime
+import pickle
+
 
 
 def print_options(meta):
@@ -719,23 +721,16 @@ imblearn.pipeline.make_pipeline(preprocessor, sampler, copy.deepcopy(preprocesso
 
 
 
-    # model_name = f'{sampler} {classifier}'
-#     if verbose:
-#         print(f'Running {model_name}.')
-#     clf.fit(X_train, y_train)
-#     cur_model = clf
-#     if verbose:
-#         print("model trained to: %.3f" % clf.score(X_train, y_train))
-#         print("model score: %.3f" % clf.score(X_test, y_test))
-#     return clf
-#
-# def f1_auc_acc(clf, X_test, y_test):
-#     y_pred = clf.predict(X_test)
-#     y_prob = clf.predict_proba(X_test)[:,1]
-#     f1 = f1_score(y_true=y_test, y_pred=y_pred)
-#     auc = roc_auc_score(y_true=y_test, y_score=y_prob)
-#     acc = clf.score(y)
-#     return f1, auc
+def save_model(savepath, model, X_test, y_test):
+    with open(savepath,'wb+') as f:
+        pickle.dump((model, y_test, X_test), f)
+
+def load_model(loadpath):
+    ## Do NOT load ANYTHING that you don't 100% trust! Malicious contents could easily harm your computer.
+    with open(loadpath, 'rb') as f:
+        model, y_test, X_test = pickle.load(f)
+    return model, X_test, y_test, 
+    
 
 
 if __name__ == '__main__':
