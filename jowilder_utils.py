@@ -682,23 +682,24 @@ class GridSearcher():
             print("model score: %.3f" % clf.score(self.X_test, self.y_test))
         return clf
 
-    def metrics(self, prcurve_dir=None, prcurve_prefix=None):
+    def metrics(self, graph_dir=None, graph_prefix=None):
         # return list of (metric: float, metric_name: str) tuples of metrics of given classifier (default: self.cur_model)
-        def f1(pr, re): return 2*pr*re/(pr+re)
-        def fb(pr, re, beta=1):
+        def f1(prec, recall): 
+            return fb(prec, recall, beta=1)
+        def fb(prec, recall, beta=1):
             if prec==0 or recall==0:
                 return 0
-            numerator = pr*re
-            denominator = pr*beta*beta + re
-            return (1+b*b)*numerator/denominator
-        def f2(pr, re):
-            return fb(pr,re,beta=2)
+            numerator = prec*recall
+            denominator = prec*beta*beta + recall
+            return (1+beta*beta)*numerator/denominator
+        def f2(prec, recall):
+            return fb(prec,recall,beta=2)
 
         metric_list = []
         clf = self.cur_model
 
         # label metrics
-        if prcurve_prefix:
+        if graph_prefix:
             for flipped_labels in [False, True]:
                 flipped_labels_suffix = '' if not flipped_labels else '_flipped'
                 fig, axes = plt.subplots(3,3,figsize=(20,20))
@@ -723,9 +724,9 @@ class GridSearcher():
                             ax.set_xlim(-0.05,1.05)
                             ax.set_ylim(-0.05,1.05)
                             ax.set_aspect('equal', adjustable='box')
-                suptitle = f'{prcurve_prefix}{flipped_labels_suffix}'
+                suptitle = f'{graph_prefix}{flipped_labels_suffix}'
                 plt.suptitle(suptitle)
-                savepath = os.path.join(prcurve_dir, f'{suptitle}.png')
+                savepath = os.path.join(graph_dir, f'{suptitle}.png')
                 fig.savefig(savepath, dpi=100)
                 plt.close()
 
