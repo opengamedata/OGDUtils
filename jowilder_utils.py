@@ -8,6 +8,35 @@ from sklearn.preprocessing import StandardScaler
 from imblearn.pipeline import make_pipeline
 from sklearn.compose import ColumnTransformer
 
+import os
+from math import ceil
+from matplotlib import pyplot as plt
+from scipy import stats
+from collections import Counter
+from io import BytesIO
+from zipfile import ZipFile
+import importlib
+import urllib.request
+import feature_utils as feat_util
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import make_pipeline as sklearn_pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix, accuracy_score
+from sklearn.impute import SimpleImputer
+from sklearn.naive_bayes import CategoricalNB
+from sklearn.tree import ExtraTreeClassifier, DecisionTreeClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import GridSearchCV
+from imblearn.pipeline import make_pipeline
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import RandomUnderSampler, EditedNearestNeighbours, RepeatedEditedNearestNeighbours
+from imblearn.combine import SMOTEENN, SMOTETomek
+from xgboost import XGBClassifier
+from sklearn.metrics import plot_precision_recall_curve, plot_confusion_matrix, plot_roc_curve
+import copy
+import pickle
 
 def response_boxplot(df, category, verbose=False):
     print('\n'+category)
@@ -584,3 +613,195 @@ end_obj_to_last_lvl = {
 78: 23,
 79: 23,
 }
+
+class GridSearcher():
+
+    def __init__(self, csv_fpath=None, df=None):
+        # either give csv_fpath or df.
+        assert csv_fpath or df
+        print(f'Loading from {csv_fpath}...')
+        # load df
+        if df is None:
+            self.df, self.meta = feat_util.open_csv_from_path_with_meta(
+                csv_fpath, index_col=0)
+        else:
+            self.df, self.meta = df, []
+
+        # set X and ys, and preprocessor
+        self.preprocessor, self.X = get_preprocessor(self.df)
+        self.X = self.X.fillna(0)
+        self.ys = get_ys(self.df)
+
+        # set object vars
+        self.model_dict = {}
+        self.cur_model = None
+
+    def split_data(self):
+        nonnull_X, nonnull_y = feat_util.remove_nan_labels(self.X, self.y)
+        X_train, X_test, y_train, y_test = train_test_split(
+            nonnull_X, nonnull_y, test_size=0.2, random_state=1)
+        self.X_train, self.X_test, self.y_train, self.y_test = X_train, X_test, y_train, y_test
+
+    def set_y(self, y_key=None, other_col=None):
+        if y_key:
+            print(f'Switching to {y_key}...')
+            self.y = self.ys[y_key]
+        elif other_col:
+            self.y = self.X[other_col]
+            self.X = self.X.drop(other_col, axis=1)
+        else:
+            print("Did not change y. Invalid inputs.")
+        self.split_data()
+
+    def run_fit(self, classifier, sampler=None, verbose=False):
+        # fit self.cur_model as a pipeline of the given preprocessor, sampler, preprocessor, classifer
+        clf = make_pipeline(self.preprocessor, sampler,
+                            copy.deepcopy(self.preprocessor), classifier)
+        self._sampling_pipeline = clf[:2]
+        self._classifying_pipeline = clf[2:]
+        if sampler is not None:
+            self.X_train_sampled, self.y_train_sampled = self._sampling_pipeline.fit_resample(
+                self.X_train, self.y_train)
+        else:
+            self.X_train_sampled, self.y_train_sampled = self.X_train, self.y_train
+            clf = self._classifying_pipeline
+
+        model_name = f'{sampler} {classifier}'
+        if verbose:
+            print(f'Running {model_name}.')
+        self._classifying_pipeline.fit(
+            self.X_train_sampled, self.y_train_sampled)
+        self.cur_model = clf
+        if verbose:
+            print("model trained to: %.3f" %
+                  clf.score(self.X_train, self.y_train))
+            print("model score: %.3f" % clf.score(self.X_test, self.y_test))
+        return clf
+
+    def metrics(self, prcurve_dir=None, prcurve_prefix=None):
+        # return list of (metric: float, metric_name: str) tuples of metrics of given classifier (default: self.cur_model)
+        def f1(pr, re): return 2*pr*re/(pr+re)
+        def fb(pr, re, beta=1):
+            if prec==0 or recall==0:
+                return 0
+            numerator = pr*re
+            denominator = pr*beta*beta + re
+            return (1+b*b)*numerator/denominator
+        def f2(pr, re):
+            return fb(pr,re,beta=2)
+
+        metric_list = []
+        clf = self.cur_model
+
+        # label metrics
+        if prcurve_prefix:
+            for flipped_labels in [False, True]:
+                flipped_labels_suffix = '' if not flipped_labels else '_flipped'
+                fig, axes = plt.subplots(3,3,figsize=(20,20))
+                for i,(yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
+                                            (self.y_train_sampled,
+                                            self.X_train_sampled, 'train'),
+                                            (self.y_train, self.X_train, 'train_raw'),
+                                            ]):
+                    for j, (graph_type, func) in enumerate([
+                        ('', plot_confusion_matrix),
+                        ('_PR', plot_precision_recall_curve),
+                        ('_ROC',plot_roc_curve),
+                    ]):
+                        ax = axes[j,i]
+                        graph_yarray = yarray.astype(bool)
+                        if flipped_labels:
+                            graph_yarray = ~graph_yarray
+                        disp = func(clf, Xarray, graph_yarray,ax=ax)
+                        title = f'{label}{graph_type}{flipped_labels_suffix}'
+                        ax.set_title(title)
+                        if graph_type in ['_PR','_ROC']:
+                            ax.set_xlim(-0.05,1.05)
+                            ax.set_ylim(-0.05,1.05)
+                            ax.set_aspect('equal', adjustable='box')
+                suptitle = f'{prcurve_prefix}{flipped_labels_suffix}'
+                plt.suptitle(suptitle)
+                savepath = os.path.join(prcurve_dir, f'{suptitle}.png')
+                fig.savefig(savepath, dpi=100)
+                plt.close()
+
+        for i,(yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
+                            (self.y_train_sampled,
+                            self.X_train_sampled, 'train'),
+                            (self.y_train, self.X_train, 'train_raw'),
+                            ]):
+
+            y_pred = clf.predict(Xarray)
+            y_prob = clf.predict_proba(Xarray)[:, 1]
+
+            auc = roc_auc_score(y_true=yarray, y_score=y_prob)
+            metric_list.append((auc, f'{label}_AUC'))
+            f1macro = f1_score(y_true=yarray, y_pred=y_pred, average='macro')
+            metric_list.append((f1macro, f'{label}_f1_avg'))
+            acc = accuracy_score(y_true=yarray, y_pred=y_pred)
+            metric_list.append((acc, f'{label}_acc'))
+
+            num_rows, num_cols = Xarray.shape
+            metric_list.append((num_rows, f'{label}_total_size'))
+            metric_list.append((num_cols, f'{label}_num_feats'))
+
+            counter = Counter(yarray)
+            size_0s, size_1s = counter[0], counter[1]
+            assert (size_0s + size_1s) == num_rows
+            metric_list.append((size_0s, f'{label}_size_0s'))
+            metric_list.append((size_1s, f'{label}_size_1s'))
+            baseline = max(size_0s, size_1s) / num_rows
+            metric_list.append((baseline, f'{label}_baseline'))
+
+            y_pred = clf.predict(Xarray)
+            y_prob = clf.predict_proba(Xarray)[:, 1]
+
+            confusion_mat = confusion_matrix(yarray, y_pred)
+            tn, fp, fn, tp = confusion_mat.ravel()
+            precision_1 = tp/(tp+fp)
+            precision_0 = tn/(tn+fn)
+            recall_1 = tp/(tp+fn)
+            recall_0 = tn/(tn+fp)
+            f1_1 = f1(precision_1, recall_1)
+            f1_0 = f1(precision_0, recall_0)
+            f2_1 = f2(precision_1, recall_1)
+            f2_0 = f2(precision_0, recall_0)
+            f1_avg = (f1_1+f1_0)/2
+            metric_list.extend([
+                (tp, f'{label}_tp'),
+                (fp, f'{label}_fp'),
+                (tn, f'{label}_tn'),
+                (fn, f'{label}_fn'),
+                (precision_1, f'{label}_prec_1'),
+                (precision_0, f'{label}_prec_0'),
+                (recall_1, f'{label}_recall_1'),
+                (recall_0, f'{label}_recall_0'),
+                (f1_1, f'{label}_f1_1'),
+                (f1_0, f'{label}_f1_0'),
+                (f2_1, f'{label}_f2_1'),
+                (f2_0, f'{label}_f2_0'),
+            ])
+
+        return metric_list
+
+    def model_stats(self, classifier=None, graph=True):
+        # counter, auc, and optional graph of given classifer (default: self.cur_model)
+        classifier = classifier or self.cur_model
+        y_prob = classifier.predict_proba(self.X_test)[:, 1]
+        print(f"dimension y_prob: {y_prob.shape}")
+        print(f"dimension y_test: {self.y_test.shape}")
+        print(f'Predicts:', Counter(list(classifier.predict(self.X_test))))
+        print(f'True Labels:', Counter(self.y_test))
+        if graph:
+            fpr, tpr, thres = roc_curve(self.y_test, y_prob)
+            plt.plot(fpr, tpr, color='green')
+            plt.plot([0, 1], [0, 1], color='red', linestyle='--')
+            plt.show()
+        roc_auc = roc_auc_score(self.y_test, y_prob)
+        print(f"ROC-AUC Score: {roc_auc}")
+
+    def classification_report(self):
+        # classification report on current model
+        y_true = self.y_test
+        y_pred = self.cur_model.predict(self.X_test)
+        print(classification_report(y_true, y_pred))
