@@ -392,14 +392,19 @@ def get_ys(df):
     :rtype: dictionary of y columns (df series). keys: y0,y1,y2,y1_bin,y2_bin,y1_bin_x,y2_bin_x
     """
     ys = {}
-    for key,y_col in [
-        ('y0','R0_quiz_response'),
+    for key, y_col in [
+        ('y0', 'R0_quiz_response'),
         ('y1', 'R1_quiz_response'),
         ('y2', 'R2_quiz_response'),
         ('y1_bin', 'R1_quiz_response_bin'),
+        ('y1_bin_0v12', 'R1_quiz_response_0v12'),
+        ('y1_bin_01v2', 'R1_quiz_response_01v2'),
         ('y1_bin_x', 'R1_quiz_response_bin_x'),
         ('y2_bin', 'R2_quiz_response_bin'),
         ('y2_bin_x', 'R2_quiz_response_bin_x'),
+        ('y2_bin_0v123', 'R2_quiz_response_bin0v123'),
+        ('y2_bin_01v23', 'R2_quiz_response_bin01v23'),
+        ('y2_bin_012v3', 'R2_quiz_response_bin012v3'),
     ]:
         if y_col in df.columns:
             ys[key] = df.loc[:,y_col].astype('category').copy()
