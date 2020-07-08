@@ -1,42 +1,63 @@
-# from google.colab import files
-from matplotlib import pyplot as plt
-import numpy as np
-import pandas as pd
-from IPython.display import display
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
-from imblearn.pipeline import make_pipeline
-from sklearn.compose import ColumnTransformer
+# google imports
 
+# standard library imports
+import sys
+import copy
+import pickle
 import os
-from math import ceil
-from matplotlib import pyplot as plt
-from scipy import stats
 from collections import Counter
 from io import BytesIO
 from zipfile import ZipFile
+import copy
+import pickle
+from math import ceil
 import importlib
 import urllib.request
-import feature_utils as feat_util
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import make_pipeline as sklearn_pipeline
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix, accuracy_score
-from sklearn.impute import SimpleImputer
+
+# math imports
+from matplotlib import pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+# Jupyter Imports
+from IPython.display import display
+# from google.colab import files
+
+# ML imports
+# models
 from sklearn.naive_bayes import CategoricalNB
 from sklearn.tree import ExtraTreeClassifier, DecisionTreeClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.model_selection import GridSearchCV
-from imblearn.pipeline import make_pipeline
+from xgboost import XGBClassifier
+from sklearn.linear_model import RidgeCV, SGDRegressor
+from sklearn.svm import LinearSVR
+
+
+# preprocessing
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, KBinsDiscretizer
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.model_selection import train_test_split
+
+# sampling
 from imblearn.over_sampling import RandomOverSampler
 from imblearn.under_sampling import RandomUnderSampler, EditedNearestNeighbours, RepeatedEditedNearestNeighbours
 from imblearn.combine import SMOTEENN, SMOTETomek
-from xgboost import XGBClassifier
+
+# metrics
+from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.metrics import plot_precision_recall_curve, plot_confusion_matrix, plot_roc_curve
-import copy
-import pickle
+from sklearn.metrics import f1_score, roc_auc_score, roc_curve, accuracy_score
+
+# other
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import GridSearchCV
+
+# custom imports
+import feature_utils as feat_util
+
 
 def response_boxplot(df, category, verbose=False):
     print('\n'+category)
@@ -618,6 +639,7 @@ end_obj_to_last_lvl = {
     79: 23,
 }
 
+
 class GridSearcher():
 
     def __init__(self, csv_fpath=None, df=None):
@@ -684,16 +706,18 @@ class GridSearcher():
 
     def metrics(self, graph_dir=None, graph_prefix=None):
         # return list of (metric: float, metric_name: str) tuples of metrics of given classifier (default: self.cur_model)
-        def f1(prec, recall): 
+        def f1(prec, recall):
             return fb(prec, recall, beta=1)
+
         def fb(prec, recall, beta=1):
-            if prec==0 or recall==0:
+            if prec == 0 or recall == 0:
                 return 0
             numerator = prec*recall
             denominator = prec*beta*beta + recall
             return (1+beta*beta)*numerator/denominator
+
         def f2(prec, recall):
-            return fb(prec,recall,beta=2)
+            return fb(prec, recall, beta=2)
 
         metric_list = []
         clf = self.cur_model
@@ -702,27 +726,28 @@ class GridSearcher():
         if graph_prefix:
             for flipped_labels in [False, True]:
                 flipped_labels_suffix = '' if not flipped_labels else '_flipped'
-                fig, axes = plt.subplots(3,3,figsize=(20,20))
-                for i,(yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
-                                            (self.y_train_sampled,
-                                            self.X_train_sampled, 'train'),
-                                            (self.y_train, self.X_train, 'train_raw'),
-                                            ]):
+                fig, axes = plt.subplots(3, 3, figsize=(20, 20))
+                for i, (yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
+                                                             (self.y_train_sampled,
+                                                              self.X_train_sampled, 'train'),
+                                                             (self.y_train,
+                                                              self.X_train, 'train_raw'),
+                                                             ]):
                     for j, (graph_type, func) in enumerate([
                         ('', plot_confusion_matrix),
                         ('_PR', plot_precision_recall_curve),
-                        ('_ROC',plot_roc_curve),
+                        ('_ROC', plot_roc_curve),
                     ]):
-                        ax = axes[j,i]
+                        ax = axes[j, i]
                         graph_yarray = yarray.astype(bool)
                         if flipped_labels:
                             graph_yarray = ~graph_yarray
-                        disp = func(clf, Xarray, graph_yarray,ax=ax)
+                        disp = func(clf, Xarray, graph_yarray, ax=ax)
                         title = f'{label}{graph_type}{flipped_labels_suffix}'
                         ax.set_title(title)
-                        if graph_type in ['_PR','_ROC']:
-                            ax.set_xlim(-0.05,1.05)
-                            ax.set_ylim(-0.05,1.05)
+                        if graph_type in ['_PR', '_ROC']:
+                            ax.set_xlim(-0.05, 1.05)
+                            ax.set_ylim(-0.05, 1.05)
                             ax.set_aspect('equal', adjustable='box')
                 suptitle = f'{graph_prefix}{flipped_labels_suffix}'
                 plt.suptitle(suptitle)
@@ -730,11 +755,12 @@ class GridSearcher():
                 fig.savefig(savepath, dpi=100)
                 plt.close()
 
-        for i,(yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
-                            (self.y_train_sampled,
-                            self.X_train_sampled, 'train'),
-                            (self.y_train, self.X_train, 'train_raw'),
-                            ]):
+        for i, (yarray, Xarray, label) in enumerate([(self.y_test, self.X_test, 'test'),
+                                                     (self.y_train_sampled,
+                                                      self.X_train_sampled, 'train'),
+                                                     (self.y_train,
+                                                      self.X_train, 'train_raw'),
+                                                     ]):
 
             y_pred = clf.predict(Xarray)
             y_prob = clf.predict_proba(Xarray)[:, 1]
