@@ -622,7 +622,7 @@ class GridSearcher():
 
     def __init__(self, csv_fpath=None, df=None, meta=[]):
         # either give csv_fpath or df.
-        assert csv_fpath or df != None
+        assert csv_fpath or not df.empty
         print(f'Loading from {csv_fpath}...')
         # load df
         if df is None:
