@@ -644,7 +644,7 @@ end_obj_to_last_lvl = {
 
 class GridSearcher():
 
-    def __init__(self, csv_fpath=None, df=None, meta=[]):
+    def __init__(self, csv_fpath=None, df=None, preprocessor=None, fillna=0, meta=[], expect_bool_cols=True):
         # either give csv_fpath or df.
         assert csv_fpath or not df.empty
         print(f'Loading from {csv_fpath}...')
