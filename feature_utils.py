@@ -22,6 +22,8 @@ import Notebooks.Clustering.cluster_utils as cu
 import os
 import numpy as np
 import pandas as pd
+import seaborn as sns
+sns.set()
 import urllib.request
 import utils as utils
 import ipywidgets as widgets
@@ -31,10 +33,12 @@ from matplotlib import pyplot as plt
 from scipy import stats
 from typing import Optional, List, Iterable
 from zipfile import ZipFile
-from sklearn.metrics import f1_score, confusion_matrix, classification_report, roc_auc_score, roc_curve, plot_confusion_matrix
-import imblearn.pipeline
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import plot_precision_recall_curve, plot_confusion_matrix, plot_roc_curve
+from sklearn.metrics import f1_score, roc_auc_score, roc_curve, accuracy_score
 from datetime import datetime
 import pickle
+from collections import Counter
 
 
 
@@ -670,16 +674,19 @@ def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permiss
         csv_name = csv_name[:-4]
     else:
         extension = '.csv'
+    separator = '\t' if extension == '.tsv' else ','
+
+    # hardcopy
+    meta_list = [x for x in meta_list]
     meta_list.append(f'OUTPUT_SHAPE: {df.shape}')
     meta_list.append(f'OUTPUT_FILE: {csv_name}')
-    meta_list.append(f'OUTPUT_DATE: {datetime.now()}')
+    meta_list.append(f'CSV OUTPUT_DATE: {datetime.now()}')
     if add_columns:
         meta_list.append(f'OUTPUT_COLUMNS: {sorted(list(df.columns))}')
-    separator = '\t' if extension == '.tsv' else ','
+
     meta_name = meta_name or csv_name + '_meta.txt'
-    meta_text = 'Metadata:\n'+'\n'.join(meta_list)
-    with open(os.path.join(save_dir, meta_name), permissions) as f:
-        f.write(meta_text)
+    save_meta(meta_list, save_dir, meta_name, permissions=permissions)
+
     with open(os.path.join(save_dir, csv_name)+extension, permissions) as f:
         for l in meta_text.splitlines():
             f.write(f'# {l}\n')
@@ -687,6 +694,13 @@ def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permiss
         df.to_csv(f, sep=separator)
 
     return None, []
+
+def save_meta(meta_list, save_dir, meta_name, permissions='w+'):
+    meta_text = 'Metadata:\n'+'\n'.join(meta_list+[
+        f'META OUTPUT_DATE: {datetime.now()}'
+    ])
+    with open(os.path.join(save_dir, meta_name), permissions) as f:
+        f.write(meta_text)
 
 
 def open_csv_from_path_with_meta(csv_fpath, index_col=0):
@@ -721,8 +735,19 @@ imblearn.pipeline.make_pipeline(preprocessor, sampler, copy.deepcopy(preprocesso
 
 
 
-def save_model(savepath, model, X_test, y_test):
-    with open(savepath,'wb+') as f:
+def save_model(savedir, savename, model, X_test, y_test, meta_list=None):
+    name, ext = os.path.splitext(savename)
+    if meta_list:
+        meta_list = [x for x in meta_list]
+        meta_list.append(f'MODEL_USED: {model}')
+        meta_list.append(f'TEST_SHAPE: {X_test.shape}')
+        meta_list.append(f'MODEL_Ytest_Xtest_SAVEPATH: {savename}')
+        meta_list.append(f'OUTPUT_FILE: {savename}')
+        meta_list.append(f'MODEL_OUTPUT_DATE: {datetime.now()}')
+        meta_list.append(f'TEST_COLUMNS: {sorted(list(X_test.columns))}')
+        meta_name = name + '_meta.txt'
+        save_meta(meta_list, savedir, meta_name, permissions='w+')
+    with open(os.path.join(savedir, savename),'wb+') as f:
         pickle.dump((model, y_test, X_test), f)
 
 def load_model(loadpath):
@@ -730,7 +755,131 @@ def load_model(loadpath):
     with open(loadpath, 'rb') as f:
         model, y_test, X_test = pickle.load(f)
     return model, X_test, y_test, 
-    
+
+def corr_heatmap(df,figsize=(20,20),max_corr=.3, max_rows=3000):
+    corr = fast_corr(df, max_rows)
+    # Generate a mask for the upper triangle
+    mask = np.triu(np.ones_like(corr, dtype=np.bool))
+
+    # Set up the matplotlib figure
+    f, ax = plt.subplots(figsize=figsize)
+
+    # Generate a custom diverging colormap
+    cmap = sns.diverging_palette(220, 10, as_cmap=True)
+
+    # Draw the heatmap with the mask and correct aspect ratio
+    sns.heatmap(corr, mask=mask, cmap=cmap, vmax=max_corr, vmin=-1*max_corr, center=0,
+                square=True, linewidths=.5, cbar_kws={"shrink": .5})
+def fast_corr(df, max_rows):
+    num_rows = min(max_rows, len(df))
+    corr_matrix = df.iloc[:num_rows,:].corr()
+    return corr_matrix
+
+def get_high_corr_columns(df, thresh=.95,max_rows=3000):
+    corr_matrix = fast_corr(df,max_rows=max_rows).abs()
+    # Select upper triangle of correlation matrix
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+
+    # Find index of feature columns with correlation greater or equal to thresh
+    to_drop = [column for column in upper.columns if any(upper[column] >= thresh)]
+    return to_drop
+
+def fb(prec, recall, beta=1):
+    if prec == 0 or recall == 0:
+        return 0
+    numerator = prec*recall
+    denominator = prec*beta*beta + recall
+    return (1+beta*beta)*numerator/denominator
+
+def f1(prec, recall):
+    return fb(prec, recall, beta=1)
+
+def f2(prec, recall):
+    return fb(prec, recall, beta=2)
+
+def binary_metric_list(y_true, y_pred, y_prob, X_shape=None, label_prefix='', majority_class=1):
+    metric_list = []
+
+    baseline_pred = [majority_class]*len(y_true)
+
+    auc = roc_auc_score(y_true=y_true, y_score=y_prob)
+    metric_list.append((auc, f'{label_prefix}AUC'))
+    f1macro = f1_score(y_true=y_true, y_pred=y_pred, average='macro')
+    metric_list.append((f1macro, f'{label_prefix}f1_avg'))
+    acc = accuracy_score(y_true=y_true, y_pred=y_pred)
+    metric_list.append((acc, f'{label_prefix}acc'))
+    baseline_acc = accuracy_score(y_true=y_true, y_pred=baseline_pred)
+    metric_list.append((acc, f'{label_prefix}acc'))
+    metric_list.append((baseline_acc, f'{label_prefix}baseline_acc'))
+    baseline_auc = roc_auc_score(y_true=y_true, y_score=baseline_pred)
+    metric_list.append((baseline_auc, f'{label_prefix}baseline_auc'))
+    dAcc = acc - baseline_acc
+    dAuc = auc - baseline_auc
+    metric_list.append((dAuc, f'{label_prefix}dAuc'))
+    metric_list.append((dAcc, f'{label_prefix}dAcc'))
+
+
+    counter = Counter(y_true)
+    size_0s, size_1s = counter[0], counter[1]
+    if X_shape:
+        num_rows, num_cols = X_shape
+        assert (size_0s + size_1s) == num_rows
+        metric_list.append((num_rows, f'{label_prefix}total_size'))
+        metric_list.append((num_cols, f'{label_prefix}num_feats'))
+
+
+    metric_list.append((size_0s, f'{label_prefix}size_0s'))
+    metric_list.append((size_1s, f'{label_prefix}size_1s'))
+
+    confusion_mat = confusion_matrix(y_true, y_pred)
+    tn, fp, fn, tp = confusion_mat.ravel()        
+    precision_1 = tp/(tp+fp)
+    b_precision_1 = size_1s/(size_1s+size_0s)
+    precision_0 = tn/(tn+fn)
+    b_precision_0 = size_0s/(size_1s+size_0s)
+    recall_1 = tp/(tp+fn)
+    recall_0 = tn/(tn+fp)
+    b_recall = 1
+    f1_1 = f1(precision_1, recall_1)
+    b_f1_1 = f1(b_precision_1, b_recall)
+    f1_0 = f1(precision_0, recall_0)
+    b_f1_0 = f1(b_precision_0, b_recall)
+    f2_1 = f2(precision_1, recall_1)
+    b_f2_1 = f2(b_precision_1, b_recall)
+    f2_0 = f2(precision_0, recall_0)
+    b_f2_0 = f2(b_precision_0, b_recall)
+    f1_avg = (f1_1+f1_0)/2
+
+    metric_list.extend([
+        (tp, f'{label_prefix}tp'),
+        (fp, f'{label_prefix}fp'),
+        (tn, f'{label_prefix}tn'),
+        (fn, f'{label_prefix}fn'),
+        (precision_1, f'{label_prefix}prec_1'),
+        (precision_0, f'{label_prefix}prec_0'),
+        (recall_1, f'{label_prefix}recall_1'),
+        (recall_0, f'{label_prefix}recall_0'),
+        (f1_1, f'{label_prefix}f1_1'),
+        (f1_0, f'{label_prefix}f1_0'),
+        (f2_1, f'{label_prefix}f2_1'),
+        (f2_0, f'{label_prefix}f2_0'),
+
+        (b_precision_1, f'{label_prefix}prec_1_baseline'),
+        (b_precision_0, f'{label_prefix}prec_0_baseline'),
+        (b_f1_1, f'{label_prefix}f1_1_baseline'),
+        (b_f1_0, f'{label_prefix}f1_0_baseline'),
+        (b_f2_1, f'{label_prefix}f2_1_baseline'),
+        (b_f2_0, f'{label_prefix}f2_0_baseline'),
+
+        (precision_1 - b_precision_1, f'{label_prefix}dPrec_1'),
+        (precision_0 - b_precision_0, f'{label_prefix}dPrec_0'),
+        (f1_1 - b_f1_1, f'{label_prefix}dF1_1'),
+        (f1_0 - b_f1_0, f'{label_prefix}dF1_0'),
+        (f2_1 - b_f2_1, f'{label_prefix}dF2_1'),
+        (f2_0 - b_f2_0, f'{label_prefix}dF2_0'),
+    ])
+
+    return metric_list
 
 
 if __name__ == '__main__':

@@ -19,6 +19,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
+import seaborn as sns
+sns.set()
 
 # Jupyter Imports
 from IPython.display import display
@@ -52,7 +54,7 @@ from sklearn.metrics import plot_precision_recall_curve, plot_confusion_matrix, 
 from sklearn.metrics import f1_score, roc_auc_score, roc_curve, accuracy_score
 
 # other
-from sklearn.pipeline import make_pipeline
+from imblearn.pipeline import make_pipeline
 from sklearn.model_selection import GridSearchCV
 
 # custom imports
@@ -400,8 +402,8 @@ def get_preprocessor(df, scaler=StandardScaler(), imputer=SimpleImputer(strategy
                                                 "play_second",
                                                 "_continue", "continue", "save_code", "music", "hq", "fullscreen",
                                                 "persistentSessionID", ], axis=1, errors='ignore').copy()
-    y_cols, bool_cols, int_cols = separate_columns(df, bool_dtype=bool_dtype)
-    X = df.loc[:, int_cols+bool_cols]
+    y_cols, bool_cols, num_cols = separate_columns(df, bool_dtype=bool_dtype)
+    X = df.loc[:, num_cols+bool_cols]
 
     # too complicated to allow for pipeline order
     # pipeline_strings = [pipeline_order[i:i+2] for i in range(0,len(pipeline_order),2)]
@@ -410,18 +412,18 @@ def get_preprocessor(df, scaler=StandardScaler(), imputer=SimpleImputer(strategy
     # for s in pipeline_strings:
     #     if s == 'Sa':
     #         transformer = make_pipeline(sampler)
-    #         cols = int_cols + bool_cols
+    #         cols = num_cols + bool_cols
     #         name = f'{s}{num_sa}'
     #         num_sa += 1
     #     elif s == 'Sc':
     #         transformer = scaler
     #         name = f'{s}{num_sc}'
-    #         cols = int_cols
+    #         cols = num_cols
     #         num_sc += 1
     #     elif s == 'Im':
     #         transformer = imputer
     #         name = f'{s}{num_im}'
-    #         cols = int_cols
+    #         cols = num_cols
     #         num_im += 1
     #     else:
     #         raise ValueError("Pipeline substrings must be Sa Sc or Im")
@@ -431,7 +433,7 @@ def get_preprocessor(df, scaler=StandardScaler(), imputer=SimpleImputer(strategy
         X.columns.get_loc(s) for s in col_strs]
     column_transformer = ColumnTransformer(
         transformers=[
-            ('num', make_pipeline(scaler, imputer), col_str_to_int(int_cols)),
+            ('num', make_pipeline(scaler, imputer), col_str_to_int(num_cols)),
             ('bool', 'passthrough', col_str_to_int(bool_cols))
         ],
         remainder='drop')
@@ -463,7 +465,7 @@ def get_ys(df):
     return ys
 
 
-def separate_columns(df, bool_dtype='int64') -> (list, list, list):
+def separate_columns(df, bool_dtype='int64', expect_bool_cols = True) -> (list, list, list):
     """
 
     :param df:
@@ -475,11 +477,11 @@ def separate_columns(df, bool_dtype='int64') -> (list, list, list):
     bool_cols = [col for col in df.select_dtypes(include=[bool_dtype])
                  if np.isin(df[col].dropna().unique(), [0, 1]).all() and
                  col not in y_cols]
-    int_cols = [
+    num_cols = [
         col for col in df.columns if col not in bool_cols and col not in y_cols]
-    if not bool_cols:
+    if not bool_cols and expect_bool_cols:
         print('Warning! No bool columns. Consider changing bool_dtype="int_64" to "uint8"')
-    return y_cols, bool_cols, int_cols
+    return y_cols, bool_cols, num_cols
 
 
 end_obj_to_last_Q = {
@@ -642,20 +644,26 @@ end_obj_to_last_lvl = {
 
 class GridSearcher():
 
-    def __init__(self, csv_fpath=None, df=None):
+    def __init__(self, csv_fpath=None, df=None, preprocessor=None, fillna=0, meta=[], expect_bool_cols=True):
         # either give csv_fpath or df.
-        assert csv_fpath or df
-        print(f'Loading from {csv_fpath}...')
+        assert csv_fpath is not None or df is not None
         # load df
         if df is None:
+            print(f'Loading from {csv_fpath}...')
             self.df, self.meta = feat_util.open_csv_from_path_with_meta(
                 csv_fpath, index_col=0)
         else:
-            self.df, self.meta = df, []
+            self.df = df
+            self.meta = meta or []
 
         # set X and ys, and preprocessor
-        self.preprocessor, self.X = get_preprocessor(self.df)
-        self.X = self.X.fillna(0)
+        if not preprocessor:
+            self.preprocessor, self.X = get_preprocessor(self.df)
+            self.X = self.X.fillna(fillna)
+        else:
+            _, bool_cols, num_cols = separate_columns(self.df, expect_bool_cols=expect_bool_cols)
+            self.X = df[bool_cols+num_cols]
+            self.preprocessor = preprocessor
         self.ys = get_ys(self.df)
 
         # set object vars
@@ -679,46 +687,47 @@ class GridSearcher():
             print("Did not change y. Invalid inputs.")
         self.split_data()
 
-    def run_fit(self, classifier, sampler=None, verbose=False):
+    def run_fit(self, classifier, sampler=None, verbose=False, preprocess_twice=True, sampler_index=None, full_pipeline=False):
         # fit self.cur_model as a pipeline of the given preprocessor, sampler, preprocessor, classifer
-        clf = make_pipeline(self.preprocessor, sampler,
-                            copy.deepcopy(self.preprocessor), classifier)
-        self._sampling_pipeline = clf[:2]
-        self._classifying_pipeline = clf[2:]
-        if sampler is not None:
+        # if preprocess_twice is false, self.cur_model is sampler, preprocessor, classifier
+        # if full_pipeline and sampler index, self.cur_model is the classifier 
+        # (must be a pipeline containing a sampler or a placeholder (None) for the sampler)
+        if full_pipeline:
+            assert sampler_index is not None
+            clf = classifier
+        elif preprocess_twice:
+            clf = make_pipeline(self.preprocessor, sampler,
+                                copy.deepcopy(self.preprocessor), classifier)
+            sampler_index = 1
+        else:
+            clf = make_pipeline(sampler, self.preprocessor, classifier)
+            sampler_index = 0
+
+        self._sampling_pipeline = clf[:sampler_index+1]
+        self._classifying_pipeline = clf[sampler_index+1:]
+        if clf[sampler_index] is not None:
             self.X_train_sampled, self.y_train_sampled = self._sampling_pipeline.fit_resample(
                 self.X_train, self.y_train)
         else:
             self.X_train_sampled, self.y_train_sampled = self.X_train, self.y_train
             clf = self._classifying_pipeline
 
-        model_name = f'{sampler} {classifier}'
-        if verbose:
-            print(f'Running {model_name}.')
+        # model_name = f'{sampler} {classifier}'
+        # if verbose:
+        #     print(f'Running {model_name}.')
         self._classifying_pipeline.fit(
             self.X_train_sampled, self.y_train_sampled)
         self.cur_model = clf
-        if verbose:
-            print("model trained to: %.3f" %
-                  clf.score(self.X_train, self.y_train))
-            print("model score: %.3f" % clf.score(self.X_test, self.y_test))
+        # if verbose:
+        #     print("model trained to: %.3f" %
+        #           clf.score(self.X_train, self.y_train))
+        #     print("model score: %.3f" % clf.score(self.X_test, self.y_test))
         return clf
 
-    def metrics(self, graph_dir=None, graph_prefix=None):
+    def metrics(self, graph_dir=None, graph_prefix=None, binary_classification=True):
         # return list of (metric: float, metric_name: str) tuples of metrics of given classifier (default: self.cur_model)
-        def f1(prec, recall):
-            return fb(prec, recall, beta=1)
-
-        def fb(prec, recall, beta=1):
-            if prec == 0 or recall == 0:
-                return 0
-            numerator = prec*recall
-            denominator = prec*beta*beta + recall
-            return (1+beta*beta)*numerator/denominator
-
-        def f2(prec, recall):
-            return fb(prec, recall, beta=2)
-
+        # can only do metrics for binary classification as of right now
+        assert binary_classification
         metric_list = []
         clf = self.cur_model
 
@@ -764,54 +773,14 @@ class GridSearcher():
 
             y_pred = clf.predict(Xarray)
             y_prob = clf.predict_proba(Xarray)[:, 1]
+            y_true = yarray
+            X_shape = Xarray.shape
+            metric_list.extend(feat_util.binary_metric_list(
+                y_true=y_true, y_pred=y_pred, y_prob=y_prob, X_shape=X_shape,
+                label_prefix=f'{label}_'
+            ))
 
-            auc = roc_auc_score(y_true=yarray, y_score=y_prob)
-            metric_list.append((auc, f'{label}_AUC'))
-            f1macro = f1_score(y_true=yarray, y_pred=y_pred, average='macro')
-            metric_list.append((f1macro, f'{label}_f1_avg'))
-            acc = accuracy_score(y_true=yarray, y_pred=y_pred)
-            metric_list.append((acc, f'{label}_acc'))
 
-            num_rows, num_cols = Xarray.shape
-            metric_list.append((num_rows, f'{label}_total_size'))
-            metric_list.append((num_cols, f'{label}_num_feats'))
-
-            counter = Counter(yarray)
-            size_0s, size_1s = counter[0], counter[1]
-            assert (size_0s + size_1s) == num_rows
-            metric_list.append((size_0s, f'{label}_size_0s'))
-            metric_list.append((size_1s, f'{label}_size_1s'))
-            baseline = max(size_0s, size_1s) / num_rows
-            metric_list.append((baseline, f'{label}_baseline'))
-
-            y_pred = clf.predict(Xarray)
-            y_prob = clf.predict_proba(Xarray)[:, 1]
-
-            confusion_mat = confusion_matrix(yarray, y_pred)
-            tn, fp, fn, tp = confusion_mat.ravel()
-            precision_1 = tp/(tp+fp)
-            precision_0 = tn/(tn+fn)
-            recall_1 = tp/(tp+fn)
-            recall_0 = tn/(tn+fp)
-            f1_1 = f1(precision_1, recall_1)
-            f1_0 = f1(precision_0, recall_0)
-            f2_1 = f2(precision_1, recall_1)
-            f2_0 = f2(precision_0, recall_0)
-            f1_avg = (f1_1+f1_0)/2
-            metric_list.extend([
-                (tp, f'{label}_tp'),
-                (fp, f'{label}_fp'),
-                (tn, f'{label}_tn'),
-                (fn, f'{label}_fn'),
-                (precision_1, f'{label}_prec_1'),
-                (precision_0, f'{label}_prec_0'),
-                (recall_1, f'{label}_recall_1'),
-                (recall_0, f'{label}_recall_0'),
-                (f1_1, f'{label}_f1_1'),
-                (f1_0, f'{label}_f1_0'),
-                (f2_1, f'{label}_f2_1'),
-                (f2_0, f'{label}_f2_0'),
-            ])
 
         return metric_list
 
@@ -836,3 +805,209 @@ class GridSearcher():
         y_true = self.y_test
         y_pred = self.cur_model.predict(self.X_test)
         print(classification_report(y_true, y_pred))
+
+
+class JWWindowSelector:
+
+    ycols = ['R0_quiz_response','R1_quiz_response','R2_quiz_response','R1_quiz_response_bin',
+            'R1_quiz_response_0v12','R1_quiz_response_01v2','R1_quiz_response_bin_x',
+            'R2_quiz_response_bin','R2_quiz_response_bin_x','R2_quiz_response_bin0v123',
+            'R2_quiz_response_bin01v23','R2_quiz_response_bin012v3']
+    INTERACTION = 0
+    LEVEL = 1
+    QUIZ = 2
+    OBJECTIVE = 3
+
+    def __init__(self, csv_fpath=None, df=None, meta=None):
+        assert csv_fpath is not None or df is not None
+        # load df
+        if df is None:
+            print(f'Loading from {csv_fpath}...')
+            self.df, self.meta = feat_util.open_csv_from_path_with_meta(
+                csv_fpath, index_col=0)
+        else:
+            self.df = df
+            self.meta = meta or []
+
+        self.df_cols = list(df.columns)
+
+    @staticmethod
+    def get_abbrev(window_type):
+        if window_type == JWWindowSelector.INTERACTION:
+            return 'int'
+        if window_type == JWWindowSelector.LEVEL:
+            return 'lvl'
+        if window_type == JWWindowSelector.QUIZ:
+            return 'q'
+        if window_type == JWWindowSelector.OBJECTIVE:
+            return 'obj'
+
+    @staticmethod
+    def get_prefix(n, window_type):
+        if window_type == JWWindowSelector.INTERACTION:
+            return f'int{n}_i'
+        if window_type == JWWindowSelector.LEVEL:
+            return f'lvl{n}_'
+        if window_type == JWWindowSelector.QUIZ:
+            return f'Q{n}_'
+        if window_type == JWWindowSelector.OBJECTIVE:
+            return f'obj{n}_o'
+
+    @staticmethod
+    def get_window_range(window_type, skip_Q23=False):
+        if window_type == JWWindowSelector.INTERACTION:
+            return range(189)
+        if window_type == JWWindowSelector.LEVEL:
+            return range(24)
+        if window_type == JWWindowSelector.QUIZ:
+            if not skip_Q23:
+                return range(19)
+            else:
+                return [0,1,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
+        if window_type == JWWindowSelector.OBJECTIVE:
+            return range(80)
+
+
+    def cols_startwith(self, prefix):
+        return [c for c in self.df_cols if c.startswith(prefix)]
+    def get_feats(self, n, window_type):
+        prefix = self.get_prefix(n, window_type)
+        feats = self.cols_startwith(prefix)
+        return feats
+
+    def get_filter_queries(self, n, window_type, max_seconds_per_word=2):
+        prefix = JWWindowSelector.get_prefix(n, window_type)
+        queries = [f"R1_quiz_response == R1_quiz_response"]
+        if window_type in [JWWindowSelector.INTERACTION, JWWindowSelector.LEVEL]:
+            queries.extend([
+                        f"{prefix}first_enc_duration == {prefix}first_enc_duration",
+                        f"{prefix}first_enc_duration > 0",
+            ])
+        if window_type == JWWindowSelector.QUIZ:
+            queries.extend([
+                f'{prefix}A1_nan!=1'
+            ])
+        elif window_type == JWWindowSelector.INTERACTION:
+            num_words = self.df[f"int{n}_ifirst_enc_words_read"].max()
+            queries.extend([
+                    f"{prefix}first_enc_words_read == {num_words}",
+                    f"{prefix}time_to > 0",
+                    f"{prefix}first_enc_duration < {prefix}first_enc_words_read*{max_seconds_per_word}",
+                    ])
+        elif window_type == JWWindowSelector.OBJECTIVE:
+            if n < 79:
+                queries.append(f'obj{n}_onext_int_nan==0')
+                queries.append(f"obj{n}_otime_to_next_obj < 600")
+                queries.append(f"obj{n}_otime_to_next_obj > 0 ")
+
+        elif window_type == JWWindowSelector.LEVEL:
+            queries.append(f"{prefix}time_in_level < 1200")
+            queries.append(f"{prefix}time_in_level > 0")
+
+        queries.extend([f"R{i}_quiz_response == R{i}_quiz_response" for i in [0,1,2]])
+        return queries
+
+    def get_base_meta(self):
+        return self.meta
+    
+    @staticmethod
+    def join_XY(X,Y):
+        return X.join(Y)
+    
+    def get_X_Y_meta(self, n, window_type, max_seconds_per_word=2,nbins=0, drop_first_next_int_col = True):
+        meta = []
+        prefix = JWWindowSelector.get_prefix(n, window_type)
+        Xfeats = self.get_feats(n, window_type)
+        meta.append(f'Using feats: {Xfeats}')
+
+        if window_type==JWWindowSelector.INTERACTION:
+            total_words = self.df[f"int{n}_ifirst_enc_words_read"].max() 
+            if total_words is np.nan:
+                return None, None, meta
+            elif total_words < 10:
+                print('Total words < 10!')
+        queries = self.get_filter_queries(n, window_type, max_seconds_per_word=max_seconds_per_word)
+        filtered_df, filtered_df_meta = feat_util.filter_df(self.df[Xfeats+JWWindowSelector.ycols], query_list=queries, verbose=True, fillna=None)
+        meta.extend(filtered_df_meta)
+        X = filtered_df[Xfeats].fillna(0).copy()
+        meta.append(f'Filled X with 0')
+        Y = filtered_df[JWWindowSelector.ycols].copy()
+        drop_cols = []
+        if window_type in [JWWindowSelector.INTERACTION, JWWindowSelector.LEVEL]:
+            drop_cols = [
+                f"{prefix}first_enc_boxes_read",
+                f"{prefix}first_enc_words_read",
+            ]
+        if window_type==JWWindowSelector.INTERACTION:
+            drop_cols.extend([
+            f"{prefix}time_to",
+            f"{prefix}total_duration"
+            ])
+        if window_type==JWWindowSelector.OBJECTIVE:
+            drop_cols.append(f"{prefix}next_int_nan")
+
+        # if window_type==JWWindowSelector.QUIZ:
+        #     drop_cols.append(f"{prefix}answers")
+
+        X = X.drop(columns=drop_cols)
+        meta.append(f"Dropped drop_cols: {drop_cols}")
+        constant_cols = X.columns[X.nunique()==1]
+        X = X.drop(columns=constant_cols)
+        meta.append(f'Dropped constant_cols: {constant_cols}')
+        if not len(X):
+            return None, None, meta 
+        if window_type == JWWindowSelector.OBJECTIVE and drop_first_next_int_col:
+            next_int_cols = [c for c in X.columns if 'next_int' in c]
+            if next_int_cols:
+                X = X.drop(columns=next_int_cols[0])
+                meta.append(f'Dropped onehot column {next_int_cols[0]} from {next_int_cols}')
+
+        ## does not bin by default
+        if nbins:
+            est = KBinsDiscretizer(n_bins=nbins, encode='onehot-dense', strategy='quantile')
+            bin_feats = [f'{prefix}first_enc_avg_tbps', 
+                        f'{prefix}first_enc_avg_wps',
+                        # f'{prefix}first_enc_duration',
+                        f'{prefix}first_enc_var_tbps',
+                        f'{prefix}first_enc_var_wps']
+            bin_feats = [c for c in bin_feats if c in X.columns]
+            if bin_feats:
+                    
+                Xt = est.fit_transform(X[bin_feats])
+                new_feat_names = [f'{feat}>{x:.2f}' for bins,feat in zip(est.bin_edges_,bin_feats) for x in list(bins)[:-1]]
+
+                Xt_df = pd.DataFrame(Xt, index=X.index, columns=new_feat_names)
+                X = X.join(Xt_df)
+                X = X.drop(columns=bin_feats)
+                meta.append(f'Quantized n_bins={nbins} feats {bin_feats} to {new_feat_names}')
+
+        return (X, Y, meta)
+
+    def get_X_Y_meta_range(self, ns, window_type, max_seconds_per_word=2,nbins=0, drop_first_next_int_col = True, verbose=True):
+        X, Y, meta = None, None, []
+        for n in ns:
+            tX, tY, tmeta = self.get_X_Y_meta(n, window_type, max_seconds_per_word=max_seconds_per_word, nbins=nbins, drop_first_next_int_col=drop_first_next_int_col)
+            X, Y, meta = JWWindowSelector.join_X_Y_meta(X, Y, meta, tX, tY, tmeta, copy=False)
+            print('Join Size:', X.shape)
+        X, Y = X.copy(), Y.copy()
+        return X, Y, meta
+
+    @staticmethod
+    def join_X_Y_meta(X1, Y1, meta1, X2, Y2, meta2, copy=True):
+        meta = meta1+meta2
+        if X1 is None:
+            X = X2
+            Y = Y2
+        elif X2 is None:
+            X = X1
+            Y = Y1
+        else:
+            X = X1.join(X2, how='inner')
+            Y = Y1.loc[X.index, :]
+            meta = meta1+['--Inner Join--']+meta2+[f'Resultant Join Shape: {X.shape}']
+        if copy and X is not None:
+            X, Y = X.copy(), Y.copy()
+        return X, Y, meta
+        
+                
+
