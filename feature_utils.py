@@ -685,7 +685,7 @@ def save_csv_and_meta(df, meta_list, save_dir, csv_name, meta_name=None, permiss
         meta_list.append(f'OUTPUT_COLUMNS: {sorted(list(df.columns))}')
 
     meta_name = meta_name or csv_name + '_meta.txt'
-    save_meta(meta_list, save_dir, meta_name, permissions=permissions)
+    meta_text = save_meta(meta_list, save_dir, meta_name, permissions=permissions)
 
     with open(os.path.join(save_dir, csv_name)+extension, permissions) as f:
         for l in meta_text.splitlines():
@@ -701,6 +701,7 @@ def save_meta(meta_list, save_dir, meta_name, permissions='w+'):
     ])
     with open(os.path.join(save_dir, meta_name), permissions) as f:
         f.write(meta_text)
+    return meta_text
 
 
 def open_csv_from_path_with_meta(csv_fpath, index_col=0):
