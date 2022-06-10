@@ -1,0 +1,3 @@
+[submodule "opengamedata"]
+	path = opengamedata
+	url = git@github.com:opengamedata/opengamedata-core.git
