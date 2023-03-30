@@ -1,5 +1,6 @@
 settings = {
     "DATA_DIR": "./data/",
+    "OGD_CORE_PATH":"Path/To/opengamedata-core",
     "MYSQL_CONFIG":
     {
         "DB_HOST" : "127.0.0.1",

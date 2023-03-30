@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import List, Tuple
+import sys
 
 from google.cloud import bigquery_storage_v1
 from google.cloud.bigquery_storage_v1 import types
@@ -9,6 +10,8 @@ from google.protobuf import descriptor_pb2
 from data_transfers import OGDFormat_pb2
 from data_transfers import CustomerRecordSample_pb2
 from data_transfers.config import settings
+if not settings['OGD_CORE_PATH'] in sys.path:
+    sys.path.append(settings['OGD_CORE_PATH'])
 from opengamedata.interfaces.MySQLInterface import MySQLInterface, SQL
 
 
