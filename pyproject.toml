@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "OGDUtils"
+version = "0.1.0"
+authors = [
+   { name="Luke Swanson", email="superscription58@gmail.com" },
+   { name="John McCloskey" }
+]
+description = "A package with utilities for working with output data from the Open Game Data core"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/opengamedata/OGDUtils"
+"Bug Tracker" = "https://github.com/opengamedata/OGDUtils/issues"
