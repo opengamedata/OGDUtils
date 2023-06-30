@@ -170,71 +170,6 @@ def getLogDFbyPath(proc_paths, zipped=True, index_cols=['sessionID']):
         df[index_cols[0]] = [x for x in df.index]
     return df, metadata
 
-# consider making a general version with parameter for filename, index columns
-# def getLakelandDecJanLogDF():
-#     """
-
-#     :return: (df, metadata List[str])
-#     """
-#     # define paths for DecJanLog
-#     _proc_zip_url_dec = 'https://opengamedata.fielddaylab.wisc.edu/data/LAKELAND/LAKELAND_20191201_to_20191231_de09c18_proc.zip'
-#     _proc_zip_path_jan = 'Data/Raw Log Data/LAKELAND_20200101_to_20200131_a9720c1_proc.zip'
-#     # get the data
-#     metadata = []
-#     zipfile_dec, meta = openZipFromURL(_proc_zip_url_dec)
-#     metadata.extend(meta)
-#     zipfile_jan, meta = openZipFromPath(_proc_zip_path_jan)
-#     metadata.extend(meta)
-#     # put the data into a dataframe
-#     df = pd.DataFrame()
-#     for zf in [zipfile_dec, zipfile_jan]:
-#         with zf.open(zf.namelist()[0]) as f:
-#             df = pd.concat([df, pd.read_csv(f, index_col=['sessID', 'num_play'], comment='#')], sort=True)
-#     df['sessID'] = [x[0] for x in df.index]
-#     df['num_play'] = [x[1] for x in df.index]
-#     return df, metadata
-
-
-def get_lakeland_default_filter(lvlstart: Optional[int] = None, lvlend: Optional[bool] = None, no_debug: Optional[bool] = True,
-                                min_sessActiveEventCount: Optional[int] = 10,
-                                min_lvlstart_ActiveEventCount: Optional[int] = 3,
-                                min_lvlend_ActiveEventCount: Optional[int] = 3, min_sessDuration: Optional[int] = 300, max_sessDuration: Optional[int] = None, cont: Optional[bool] = False) -> List[str]:
-    """
-
-    :param lvlstart: levelstart to be used for other parameters (None if not used)
-    :param lvlend: levelend to be used for other parameters (None if not used)
-    :param no_debug: boolean whether or not to use only players that have used SPYPARTY or only not used SPYPARTY  (None if not used)
-    :param min_sessActiveEventCount:  (None if not used)
-    :param min_lvlstart_ActiveEventCount:  (None if not used)
-    :param min_lvlend_ActiveEventCount:  (None if not used)
-    :param min_sessDuration:  (None if not used)
-    :param max_sessDuration:  (None if not used)
-    :param cont:  (None if not used)
-    :return:
-    """
-    get_lakeland_default_filter()
-    query_list = []
-
-    if no_debug:
-        query_list.append('debug == 0')
-    if min_sessActiveEventCount is not None:
-        query_list.append(
-            f'sess_ActiveEventCount >= {min_sessActiveEventCount}')
-    if lvlstart is not None and min_lvlstart_ActiveEventCount is not None:
-        query_list.append(
-            f'lvl{lvlstart}_ActiveEventCount >= {min_lvlstart_ActiveEventCount}')
-    if lvlend is not None and min_lvlend_ActiveEventCount is not None:
-        query_list.append(
-            f'lvl{lvlend}_ActiveEventCount >= {min_lvlend_ActiveEventCount}')
-    if min_sessDuration is not None:
-        query_list.append(f'sessDuration >= {min_sessDuration}')
-    if max_sessDuration is not None:
-        query_list.append(f'sessDuration <= {max_sessDuration}')
-    if cont is not None:
-        query_list.append(f'_continue == {int(cont)}')
-
-    return query_list
-
 
 # split out query creation per-game
 def filter_df(df: pd.DataFrame, query_list: List[str], one_query: bool = False, fillna: object = 0, verbose: bool = True) -> (pd.DataFrame, List[str]):
@@ -289,39 +224,6 @@ def create_new_base_features(df, verbose=False):
     new_feat_meta = [f'*arg* new_feat_args = {new_base_feature_args}']
 
     return df, new_feat_meta
-
-# def describe_lvl_feats_lakeland(df, fbase_list, lvl_range, level_time=300, level_overlap=30):
-#     """
-#     Calculates sum/avg of given level base features (fnames without lvlN_ prefix) in the level range.
-#     Will automatically filter out players who did not complete the given level range in the df
-#     May have a bug.
-
-#     :param level_time: number of seconds per level (window)
-#     :param level_overlap: number of overlap seconds per level (window)
-#     :rtype: (df, List[str]) where the new df includes sum_ and avg_lvl_A_to_B.
-#     :param df: dataframe to pull from and append to
-#     :param fbase_list: list of feature bases (fnames without lvlN_ prefix)
-#     :param lvl_range: range of levels to choose. typically range(min_level, max_level+1)
-#     """
-#     metadata = []
-#     metadata.append(f'*arg* lvlfeats = {fbase_list}')
-#     metadata.append(f'*arg* lvlrange = {lvl_range}')
-#     if not fbase_list:
-#         return df, metadata
-#     lvl_start, lvl_end = lvl_range[0], lvl_range[-1]
-#     query = f'sessDuration > {(level_time - level_overlap) * (lvl_end) + level_time}'
-#     df = df.query(query)
-#     metadata.append(
-#         f'Describe Level Feats lvls {lvl_start} to {lvl_end}. Assuming WINDOW_SIZE_SECONDS={level_time} and WINDOW_OVERLAP_SECONDS={level_overlap}, filtered by ({query})')
-#     fromlvl, tolvl = lvl_range[0], lvl_range[-1]
-#     sum_prefix = f'sum_lvl_{fromlvl}_to_{tolvl}_'
-#     avg_prefix = f'avg_lvl_{fromlvl}_to_{tolvl}_'
-#     for fn in fbase_list:
-#         tdf = df[[f'lvl{i}_{fn}' for i in lvl_range]].fillna(0).copy()
-#         df[sum_prefix + fn] = tdf.sum(axis=1)
-#         df[avg_prefix + fn] = tdf.mean(axis=1)
-#     return df, metadata
-
 
 def describe_lvl_feats(df, fbase_list, lvl_range):
     """
@@ -391,41 +293,6 @@ def describe_range_feats(df, range_feats_and_range, cc_prefix_max_list):
     return df, metadata
 
 
-def get_feat_selection_lakeland(df,  max_lvl=9):
-    """
-    Gets the feature selection widget.
-    :param df:
-    :param max_lvl:
-    :return:
-    """
-    start_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='Start Level:',
-                                    disabled=False, continuous_update=False, orientation='horizontal', readout=True, readout_format='d')
-    end_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='End Level:',
-                                  disabled=False, continuous_update=False, orientation='horizontal', readout=True, readout_format='d')
-    level_selection = widgets.GridBox([start_level, end_level])
-
-    def change_start_level(change):
-        end_level.min = start_level.value
-        if end_level.value < start_level.value:
-            end_level.value = start_level.value
-    start_level.observe(change_start_level, names="value")
-
-    lvl_feats = sorted(set([f[5:] for f in df.columns if f.startswith('lvl')]))
-    sess_feats = sorted(
-        set([f[5:] for f in df.columns if f.startswith('sess_')]))
-    other_feats = sorted(set([f for f in df.columns if not f.startswith(
-        'lvl') and not f.startswith('sess_')]))
-    selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats, 'lvl'),
-                                        multi_checkbox_widget(
-                                            sess_feats, 'sess'),
-                                        multi_checkbox_widget(
-                                            other_feats, 'other'),
-                                        level_selection],
-                                       layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
-
-    return selection_widget
-
-
 def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
     """
     Gets the feature selection widget.
@@ -459,45 +326,6 @@ def get_feat_selection(df, session_prefix, max_lvl, cc_prefix_max_list=None):
     other_feats = sorted(set(df.columns).difference(feats))
     selection_widget = widgets.GridBox(checkbox_widgets+slider_widgets+[multi_checkbox_widget(other_feats, 'other')],
                                        layout=widgets.Layout(grid_template_columns=f"repeat({len(slider_widgets)}, 500px)"))
-
-    return selection_widget
-
-
-def get_feat_selection_waves(df, max_lvl=34):
-    """
-    Gets the feature selection widget.
-    :param df:
-    :param max_lvl:
-    :return:
-    """
-    start_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='Start Level:',
-                                    disabled=False, continuous_update=False, orientation='horizontal', readout=True,
-                                    readout_format='d')
-    end_level = widgets.IntSlider(value=0, min=0, max=max_lvl, step=1, description='End Level:',
-                                  disabled=False, continuous_update=False, orientation='horizontal', readout=True,
-                                  readout_format='d')
-    level_selection = widgets.GridBox([start_level, end_level])
-
-    def change_start_level(change):
-        end_level.min = start_level.value
-        if end_level.value < start_level.value:
-            end_level.value = start_level.value
-
-    start_level.observe(change_start_level, names="value")
-
-    lvl_feats = sorted(set([''.join(f.split('_')[1:])
-                            for f in df.columns if f.startswith('lvl')]))
-    sess_feats = sorted(
-        set([f[7:] for f in df.columns if f.startswith('session')]))
-    other_feats = sorted(set([f for f in df.columns if not f.startswith(
-        'lvl') and not f.startswith('session')]))
-    selection_widget = widgets.GridBox([multi_checkbox_widget(lvl_feats, 'lvl'),
-                                        multi_checkbox_widget(
-                                            sess_feats, 'sess'),
-                                        multi_checkbox_widget(
-                                            other_feats, 'other'),
-                                        level_selection],
-                                       layout=widgets.Layout(grid_template_columns=f"repeat(3, 500px)"))
 
     return selection_widget
 

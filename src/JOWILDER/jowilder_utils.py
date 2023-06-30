@@ -24,6 +24,7 @@ sns.set()
 
 # Jupyter Imports
 from IPython.display import display
+import ipywidgets as widgets
 # from google.colab import files
 
 # ML imports
