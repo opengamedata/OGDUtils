@@ -19,23 +19,21 @@ sys.path.append('.')
 import Notebooks.Clustering.cluster_utils as cu
 
 """
+import copy
 import os
 import numpy as np
 import pandas as pd
 import seaborn as sns
 sns.set()
 import urllib.request
-import utils as utils
 import ipywidgets as widgets
-from collections import namedtuple
 from io import BytesIO
 from matplotlib import pyplot as plt
 from scipy import stats
-from typing import Optional, List, Iterable
+from typing import Iterable, Optional, List, Tuple, Union
 from zipfile import ZipFile
-from sklearn.metrics import confusion_matrix, classification_report
-from sklearn.metrics import plot_precision_recall_curve, plot_confusion_matrix, plot_roc_curve
-from sklearn.metrics import f1_score, roc_auc_score, roc_curve, accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score, roc_auc_score, accuracy_score
 from datetime import datetime
 import pickle
 from collections import Counter
@@ -172,7 +170,7 @@ def getLogDFbyPath(proc_paths, zipped=True, index_cols=['sessionID']):
 
 
 # split out query creation per-game
-def filter_df(df: pd.DataFrame, query_list: List[str], one_query: bool = False, fillna: object = 0, verbose: bool = True) -> (pd.DataFrame, List[str]):
+def filter_df(df: pd.DataFrame, query_list: List[str], one_query: bool = False, fillna: object = 0, verbose: bool = True) -> Tuple[pd.DataFrame, List[str]]:
     """
 
     :param df: dataframe to filter
@@ -350,7 +348,7 @@ def get_selected_feature_list(selection_widget, session_prefix, cc_prefix_max_li
     return range_feats_list + other_feats
 
 
-def get_range_feats_and_range(selection_widget) -> (List[str], Iterable):
+def get_range_feats_and_range(selection_widget) -> Union[List[str], Iterable]:
     """
 
     :param selection_widget:
@@ -460,7 +458,7 @@ def reduce_outliers(df, z_thresh, show_graphs=True, outpath=None):
 jw_cc_max = [('obj', 80), ('int', 188), ('Q', 18)]
 
 
-def full_filter(df, import_meta, options, outpath) -> (pd.DataFrame, List[str]):
+def full_filter(df, import_meta, options, outpath) -> Tuple[pd.DataFrame, List[str]]:
     """
     Takes in a df, metadata, and options group.
     Outputs the filtered df and the meta.
@@ -588,7 +586,7 @@ def load_model(loadpath):
 def corr_heatmap(df,figsize=(20,20),max_corr=.3, max_rows=3000):
     corr = fast_corr(df, max_rows)
     # Generate a mask for the upper triangle
-    mask = np.triu(np.ones_like(corr, dtype=np.bool))
+    mask = np.triu(np.ones_like(corr, dtype=bool))
 
     # Set up the matplotlib figure
     f, ax = plt.subplots(figsize=figsize)
@@ -607,7 +605,7 @@ def fast_corr(df, max_rows):
 def get_high_corr_columns(df, thresh=.95,max_rows=3000):
     corr_matrix = fast_corr(df,max_rows=max_rows).abs()
     # Select upper triangle of correlation matrix
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
 
     # Find index of feature columns with correlation greater or equal to thresh
     to_drop = [column for column in upper.columns if any(upper[column] >= thresh)]
