@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
@@ -6,6 +7,7 @@ from sklearn.preprocessing import StandardScaler, RobustScaler, PowerTransformer
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import silhouette_samples
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import seaborn
 import numpy as np
 import pandas as pd
@@ -67,8 +69,8 @@ class Workflow:
         self.clustering_count = self.clustering_counts[0]
 
         # viz
-        self.color_dict = {i: v for i, v in enumerate(plt.cm.get_cmap('tab10').colors)}
-        self.color_dict.update({10+i:plt.cm.get_cmap('tab20').colors[2*i+1] for i in range(10) })
+        self.color_dict = {i: v for i, v in enumerate(mpl.cm.get_cmap('tab10').colors)}
+        self.color_dict.update({10+i:mpl.cm.get_cmap('tab20').colors[2*i+1] for i in range(10) })
         self.color_dict[-1] = (.2, .2, .2)
         self.feature_names = None
 
@@ -109,7 +111,7 @@ class Workflow:
         return df, meta
 
     @staticmethod
-    def Histogram(df: pd.DataFrame, num_bins: int = None, title: str = None, log_scale=True, save=False, save_loc=None):
+    def Histogram(df: pd.DataFrame, num_bins: Optional[int] = None, title: Optional[str] = None, log_scale=True, save=False, save_loc=None):
         title = title or 'Histograms'
         num_rows = len(df.index)
         num_bins = num_bins or min(25, num_rows)
@@ -159,6 +161,8 @@ class Workflow:
             scaler = StandardScaler()
         elif scaling_method == "Robust":
             scaler = RobustScaler()
+        else:
+            scaler = None
         meta.append(f'Scaled with scikitlearn {scaler}' )
         nparray = scaler.fit_transform(nparray)
         return pd.DataFrame(nparray, columns=df.columns), meta
