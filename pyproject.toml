@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "OGDUtils"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
    { name="Luke Swanson", email="superscription58@gmail.com" },
    { name="John McCloskey" }
