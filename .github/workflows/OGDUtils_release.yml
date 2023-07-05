@@ -54,7 +54,7 @@ jobs:
     if: github.event.action == 'prereleased'
     runs-on: ubuntu-22.04
     environment:
-      name: pypi_ci
+      name: pypi_prerelease
       url: https://pypi.org/manage/project/OGDUtils/
     permissions:
       id-token: write
