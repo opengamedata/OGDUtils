@@ -43,4 +43,4 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         print-hash: true
-        repository-url: https://test.pypi.org/project/OGDUtils/
+        repository-url: https://test.pypi.org/legacy/
