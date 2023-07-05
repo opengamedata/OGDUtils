@@ -1,5 +1,5 @@
 # Workflow to build and deploy a new release of OGDUtils to PyPi.
-name: OpenGameData-Samples Release
+name: OGDUtils Release
 on:
   # push:
   workflow_dispatch: # Allow manual trigger of this workflow from the Actions tab
