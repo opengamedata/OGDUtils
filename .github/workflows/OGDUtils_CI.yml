@@ -1,7 +1,7 @@
 # Workflow to build and deploy a new release of OGDUtils to PyPi.
 name: OGDUtils CI Build
 on:
-  # push:
+  push:
   workflow_dispatch: # Allow manual trigger of this workflow from the Actions tab
 
 jobs:
@@ -14,33 +14,3 @@ jobs:
       uses: ./.github/actions/OGD_dependencies
     - name: Build Package
       run: python -m build
-    - name: Cache Build for Publishing
-      id: cache-build
-      uses: actions/cache/save@v3
-      with:
-        key: OGDUtils-build-${{ github.run_id }}-${{ github.run_attempt }}
-        path: ./dist/
-
-  publish:
-    name: Publish Release to PyPI
-    runs-on: ubuntu-22.04
-    environment:
-      name: pypi_ci
-      url: https://pypi.org/manage/project/OGDUtils/
-    permissions:
-      id-token: write
-    needs: build
-    steps:
-    - name: Restore Cached Build
-      id: cached-build
-      uses: actions/cache/restore@v3
-      with:
-        key: OGDUtils-build-${{ github.run_id }}-${{ github.run_attempt }}
-        path: ./dist/
-        fail-on-cache-miss: true
-    - name: Publish to PyPI
-      if: steps.cached-build.outputs.cache-hit == 'true'
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        print-hash: true
-        repository-url: https://test.pypi.org/legacy/
