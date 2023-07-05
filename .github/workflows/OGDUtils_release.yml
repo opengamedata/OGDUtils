@@ -21,6 +21,8 @@ jobs:
       with:
         key: OGDUtils-build-${{ github.run_id }}-${{ github.run_attempt }}
         path: ./dist/
+    - name: Print event type
+      run: echo ${{ github.event.action }}
 
   release:
     name: Publish Release to PyPI
