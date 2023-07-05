@@ -49,7 +49,7 @@ jobs:
         print-hash: true
 
   prerelease:
-    name: Publish Release to PyPI
+    name: Publish Prerelease to PyPI
     needs: build
     if: github.event.action == 'prereleased'
     runs-on: ubuntu-22.04
