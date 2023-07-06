@@ -12,7 +12,7 @@ import seaborn
 import numpy as np
 import pandas as pd
 from math import pi
-import OGDUtils.general.features as cu
+import feature_utils as cu
 import os
 
 
