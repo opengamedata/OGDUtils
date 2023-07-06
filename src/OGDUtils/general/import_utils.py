@@ -1,10 +1,106 @@
+# import standard libraries
+import json
+import shutil
+from pathlib import Path
+import urllib.request as urlrequest
+
+from enum import Enum
 from io import BytesIO
+from typing import List, Optional, Tuple
 from zipfile import ZipFile
 
+# import 3rd-party libraries
 import numpy as np
 import pandas as pd
-import urllib.request
 
+class FileTypes(Enum):
+    SESSION = "sessions"
+    PLAYER = "players"
+    POPULATION = "population"
+    EVENTS = "events"
+    ALL_EVENTS = "all_events"
+
+    def __str__(self):
+        return self.value
+
+class FileAPI:
+
+    _api_server = 'http://ogd-services.fielddaylab.wisc.edu/'
+    _api_path = 'wsgi-bin/opengamedata-website-api/production/app.wsgi/'
+
+    @property
+    def APIServer(self):
+        return FileAPI._api_server
+
+    @property
+    def APIPath(self):
+        return FileAPI._api_path
+
+    @staticmethod
+    def GetAvailableMonths(game_id:str, api_server:Optional[str] = None, api_path:Optional[str] = None) -> List[str]:
+        """Function to retrieve a list of datasets available for a given game.
+
+        :param game_id: The game whose dataset should be downloaded
+        :type game_id: str
+        :param api_server: A custom file server, if different from default, or use default server if None. The default can be accessed by the APIServer property.
+        :type api_server: Optional[str], optional
+        :param api_path: A custom path to the API on the file server, if different from default, or use default path if None. The default can be accessed by the APIPath property.
+        :type api_path: Optional[str], optional
+        :return: A list of month/year strings indicating the available datasets for the given game
+        :rtype: List[str]
+        """
+        ret_val = []
+
+        _server = api_server or FileAPI._api_server
+        _path   = api_path   or FileAPI._api_path
+        game_usage_link = f'{_server}{_path}getMonthlyGameUsage?game_id={game_id}'
+        with urlrequest.urlopen(game_usage_link) as remote_list:
+            json_data    = json.loads(remote_list.read())
+            session_data = json_data.get('data', {}).get('sessions', {})
+            ret_val = [f"{elem.get('month')}/{elem.get('year')}" for elem in session_data]
+        return ret_val
+
+    @staticmethod
+    def DownloadZippedDataset(game_id:str, month:int, year:int, datatype:FileTypes, api_server:Optional[str] = None, api_path:Optional[str] = None) -> Tuple[Optional[ZipFile], str]:
+        """Function to retrieve a dataset for a given month/year of a given game.
+
+        :param game_id: The game whose dataset should be downloaded
+        :type game_id: str
+        :param month: The month of the dataset to download
+        :type month: int
+        :param year: The year of the dataset to download
+        :type year: int
+        :param datatype: The type of dataset to download
+        :type datatype: FileTypes
+        :param api_server: A custom file server, if different from default, or use default server if None. The default can be accessed by the APIServer property.
+        :type api_server: Optional[str], optional
+        :param api_path: A custom path to the API on the file server, if different from default, or use default path if None. The default can be accessed by the APIPath property.
+        :type api_path: Optional[str], optional
+        :return: The name of the dataset that was downloaded. This is needed to locate the tsv file within the downloaded zip.
+        :rtype: str
+        """
+        dataset_name = "REMOTE DATASET NOT FOUND"
+        zip_file     = None
+
+        _server = api_server or FileAPI._api_server
+        _path   = api_path   or FileAPI._api_path
+        month_data_link = f'{_server}{_path}getGameFileInfoByMonth?game_id={game_id}&year={year}&month={month}'
+        with urlrequest.urlopen(month_data_link) as remote_list:
+            json_data    = json.loads(remote_list.read())
+            # pprint(json_data)
+            file_url = json_data.get('data', {}).get(f"{datatype}_file")
+            zip_name = file_url.split('/')[-1]
+            dataset_name = f"{'_'.join(zip_name.split('_')[:-2])}"
+            # dataset_name = f"{zip_name[:zip_name.rfind('_')]}"
+            if not Path(f'./{zip_name}').is_file():
+                print(f"Didn't find the file {zip_name} locally, downloading from {_server}...")
+                with urlrequest.urlopen(file_url) as remote_file, open(zip_name, 'wb') as local_file:
+                    shutil.copyfileobj(remote_file, local_file)
+                    print(f"Successfully downloaded a copy of the file.")
+            else:
+                print(f"Found the file {zip_name} locally, nothing will be downloaded.")
+            zip_file = ZipFile(Path(f'./{zip_name}'))
+        return (zip_file, dataset_name)
 
 def openZipFromURL(url):
     """
@@ -13,7 +109,7 @@ def openZipFromURL(url):
     :return: zipfile object, list of metadata lines
     """
     metadata = [f'Import from f{url}']
-    resp = urllib.request.urlopen(url)
+    resp = urlrequest.urlopen(url)
     zipfile = ZipFile(BytesIO(resp.read()))
 
     return zipfile, metadata
