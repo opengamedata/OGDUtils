@@ -15,12 +15,12 @@ jobs:
       uses: ./.github/actions/OGD_dependencies
     - name: Build Package
       run: python -m build
-    - name: Upload Wheel to GitHub Release
-      uses: actions/upload-release-asset@v1
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: ./dist/*.whl
-        asset_name: OGDUtils.whl
+    # - name: Upload Wheel to GitHub Release
+    #   uses: actions/upload-release-asset@v1
+    #   with:
+    #     upload_url: ${{ github.event.release.upload_url }}
+    #     asset_path: ./dist/*.whl
+    #     asset_name: OGDUtils.whl
         asset_content_type: application/zip
     - name: Cache Build for Publishing
       id: cache-build
