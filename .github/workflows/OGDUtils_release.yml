@@ -21,7 +21,7 @@ jobs:
     #     upload_url: ${{ github.event.release.upload_url }}
     #     asset_path: ./dist/*.whl
     #     asset_name: OGDUtils.whl
-        asset_content_type: application/zip
+        # asset_content_type: application/zip
     - name: Cache Build for Publishing
       id: cache-build
       uses: actions/cache/save@v3
