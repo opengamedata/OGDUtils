@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 enabled = true
 
 [project]
-name = "OGDUtilsVrtex"
+name = "OGDUtils"
 dynamic = ["version"]
 authors = [
    { name="Luke Swanson", email="superscription58@gmail.com" },
    { name="John McCloskey" },
    { name="Renee Li" }
 ]
-description = "A package with utilities for working with output data from the Open Game Data core, including the Vrtex subpackage for VR telemetry data"
+description = "A package with utilities for working with output data from the Open Game Data core"
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [

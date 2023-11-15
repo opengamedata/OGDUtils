@@ -62,7 +62,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: pypi_prerelease
-      url: https://pypi.org/manage/project/OGDUtilsVrtex/
+      url: https://pypi.org/manage/project/OGDUtils/
     permissions:
       id-token: write
     steps:
