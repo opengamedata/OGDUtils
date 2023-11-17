@@ -85,8 +85,8 @@ def ExtractEventRows(df_of_events, target_event_name):
     package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
     return package_lst
 
-def split_dataframe_by_player_id(df,name):
-    player_groups = df.groupby(name)
+def SplitDataframeByPlayerID(df):
+    player_groups = df.groupby("player_id")
 
     split_dataframes = []
 
@@ -95,7 +95,15 @@ def split_dataframe_by_player_id(df,name):
 
     return split_dataframes
 
+def SplitDataframeBySessionID(df):
+    player_groups = df.groupby("session_id")
 
+    split_dataframes = []
+
+    for player_id, group_df in player_groups:
+        split_dataframes.append(group_df)
+
+    return split_dataframes
 
 
   # https://github.com/christophhagen/averaging-quaternions
