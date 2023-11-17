@@ -165,7 +165,6 @@ def sample_dataframes_by_rows(df, num_rows):
         })   
     return smp_df
 
-
 def QuaternionToViewVector(quaternion):
   # define the quaternion vector
   q = np.array(quaternion)
