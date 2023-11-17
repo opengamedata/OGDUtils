@@ -132,69 +132,41 @@ def averageQuaternions(Q):
 
 #average by n rows
     
-def average_dataframes_by_rows(dataframes, num_rows):
-    averaged_dataframes = []
-    for d in range(len(dataframes)):
-        df_grouped = dataframes[d].groupby(dataframes[d].index // num_rows)
-        # Calculate average for each group
-        avg_df = df_grouped.agg({
-            'session_id': 'first',
-            'event_name': 'first',
-            'timesincelaunch': np.mean,
-            'position': lambda x: np.mean(np.vstack(x), axis=0).tolist(),
-            'rotation': lambda x: averageQuaternions(np.vstack(x)).tolist(),
-            'game_state_pos': lambda x: np.mean(np.vstack(x), axis=0).tolist(),
-            'game_state_rot': lambda x: averageQuaternions(np.vstack(x)).tolist()
+def average_dataframes_by_rows(df, num_rows):
+    df_grouped = df.groupby(df.index // num_rows)
+    avg_df = df_grouped.agg({
+        'session_id': 'first',
+        'event_name': 'first',
+        'timesincelaunch': np.mean,
+        'position': lambda x: np.mean(np.vstack(x), axis=0).tolist(),
+        'rotation': lambda x: averageQuaternions(np.vstack(x)).tolist(),
+        'game_state_pos': lambda x: np.mean(np.vstack(x), axis=0).tolist(),
+        'game_state_rot': lambda x: averageQuaternions(np.vstack(x)).tolist()
         })
-        avg_df['rotation_x'] = avg_df['rotation'].apply(lambda x: x[1])# Extracting the x-component
+    avg_df['rotation_x'] = avg_df['rotation'].apply(lambda x: x[1])# Extracting the x-component
 
-        averaged_dataframes.append(avg_df)
-            
-    return averaged_dataframes
+    return avg_df
 
 
 
 #sampling by rows
 
 # Sample every nth row
-def sample_dataframes_by_rows(dataframes, num_rows):
-    averaged_dataframes = []
-    for d in range(len(dataframes)):
-        df_grouped = dataframes[d].groupby(dataframes[d].index // num_rows)
+def sample_dataframes_by_rows(df, num_rows):
         # Calculate average for each group
-        smp_df = df_grouped.agg({
-        'session_id': 'first',
-        'event_name': 'first',
-        'timesincelaunch':'first',
-        'position':  'first',
-        'rotation': 'first',
-        'game_state_pos': 'first',
-        'game_state_rot': 'first'
-        })
-        averaged_dataframes.append(smp_df)
-
-            
-    return averaged_dataframes
+    df_grouped = df.groupby(df.index // num_rows)
+    smp_df = df_grouped.agg({
+    'session_id': 'first',
+    'event_name': 'first',
+    'timesincelaunch':'first',
+    'position':  'first',
+    'rotation': 'first',
+    'game_state_pos': 'first',
+    'game_state_rot': 'first'
+        })   
+    return smp_df
 
 
-#Just gets a dataframe with a different type of event isolated
-def process_other_events(data_name):
-    # Keep event_name with 'data_name' & headset_on
-    package_lst = df_copy.copy()
-    
-    # Use the isin function to filter rows where event_name is either data_name or 'headset_on'
-    #package_lst = package_lst[package_lst['event_name'] == data_name].copy()
-    
-    package_lst = package_lst[package_lst['event_name'].isin([data_name, 'headset_on'])].copy()
-    
-    # Create a new column 'headset_on_counter' that increments whenever 'headset_on' event is encountered
-    #package_lst['headset_on_counter'] = (package_lst['event_name'] == 'headset_on').groupby(package_lst['session_id']).cumsum()
-    package_lst['headset_on_counter'] = np.where(package_lst['event_name'] == 'headset_on', 1, 0)
-    package_lst['headset_on_counter'] = package_lst['headset_on_counter'].cumsum()
-    package_lst = package_lst[package_lst['event_name'] == data_name]
-    package_lst = package_lst[package_lst['event_name'] == data_name]
-    package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
-    return package_lst
 
 def norm_average(dfs):
   for d in range(len(dfs)):
