@@ -19,23 +19,17 @@ def GetStandardColumns(df_of_events):
      df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format="mixed",yearfirst=True)
      return df_copy
 
-def process_data_package(data_name, package_name,df_copy):
+def ExtractTelemetryRows(df_of_events, target_event_name,package_name):
     # Keep event_name with 'data_name' & headset_on
-    package_lst = df_copy.copy()
+    package_lst = df_of_events.copy()
     
     # Use the isin function to filter rows where event_name is either data_name or 'headset_on'
-    #package_lst = package_lst[package_lst['event_name'] == data_name].copy()
-    
-    package_lst = package_lst[package_lst['event_name'].isin([data_name, 'headset_on'])].copy()
+    package_lst = package_lst[package_lst['event_name'].isin([target_event_name, 'headset_on'])].copy()
     
     # Create a new column 'headset_on_counter' that increments whenever 'headset_on' event is encountered
-    #package_lst['headset_on_counter'] = (package_lst['event_name'] == 'headset_on').groupby(package_lst['session_id']).cumsum()
-
     package_lst['headset_on_counter'] = np.where(package_lst['event_name'] == 'headset_on', 1, 0)
     package_lst['headset_on_counter'] = package_lst['headset_on_counter'].cumsum()
-
-    package_lst = package_lst[package_lst['event_name'] == data_name]
-
+    package_lst = package_lst[package_lst['event_name'] == target_event_name]
 
     # Unpack value from event_data
     
@@ -43,6 +37,7 @@ def process_data_package(data_name, package_name,df_copy):
 
     package_lst['position'] = package_lst['event_data'].apply(lambda x: [item['pos'] for item in x])
     package_lst['rotation'] = package_lst['event_data'].apply(lambda x: [item['rot'] for item in x])
+
     # Compute the difference in 'timesincelaunch' for each session
     package_lst['timesincelaunch_diff'] = package_lst.groupby('session_id')['timesincelaunch'].diff().fillna(package_lst['timesincelaunch'])
     package_lst['timesincelaunch_initial'] = (package_lst['timesincelaunch'] - package_lst['timesincelaunch_diff']).fillna(0)
@@ -56,7 +51,6 @@ def process_data_package(data_name, package_name,df_copy):
     index_numbers = package_lst['event_data'].apply(lambda x: [i for i, item in enumerate(x) if 'pos' in item])
     #print(package_lst[['timesincelaunch_diff',"timesincelaunch","timesincelaunch_initial","timesincelaunch_diff_split"]].head(n=30))
     
-
     # Using explode to create a new row for each element in the lists
     exploded_index_numbers = index_numbers.explode()
     exploded_index_numbers.reset_index(drop=True, inplace=True)
@@ -72,7 +66,6 @@ def process_data_package(data_name, package_name,df_copy):
     package_lst['timesincelaunch'] = package_lst['timesincelaunch_initial'] + package_lst['timesincelaunch_diff_split'] * (package_lst['sequence']+1)
     #print(package_lst[['timesincelaunch_diff',"timesincelaunch","timesincelaunch_initial","timesincelaunch_diff_split"]].head(n=30))
     package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
-
 
     return package_lst
 
