@@ -9,7 +9,15 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-
+def GetStandardColumns(df_of_events):
+     df_of_events=df_of_events.sort_values(["session_id","index"])
+     df_of_events.loc[:,"game_state"]=df_of_events["game_state"].apply(json.loads)
+     df_of_events.loc[:,"event_data"]=df_of_events["event_data"].apply(json.loads)
+     #get timestamp from game_state
+     df_of_events['timesincelaunch'] = df_of_events['game_state'].apply(lambda x: x.get('seconds_from_launch', 0))
+     df_copy = df_of_events[['session_id','timestamp','event_name','event_data','game_state',"timesincelaunch"]]
+     df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format="mixed",yearfirst=True)
+     return df_copy
 
 def process_data_package(data_name, package_name,df_copy):
     # Keep event_name with 'data_name' & headset_on
