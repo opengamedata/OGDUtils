@@ -166,7 +166,7 @@ def sample_dataframes_by_rows(df, num_rows):
     return smp_df
 
 
-def quaternion_to_3d(quaternion):
+def QuaternionToViewVector(quaternion):
   # define the quaternion vector
   q = np.array(quaternion)
 
@@ -186,7 +186,7 @@ def quaternion_to_3d(quaternion):
   return(v)
 
 def QuaternionsToViewVectors(series_of_quaternions):
-    return series_of_quaternions.apply(quaternion_to_3d)
+    return series_of_quaternions.apply(QuaternionToViewVector)
 
 def NormalizeViewVector(view_vector,target_scale):
     norm = np.linalg.norm(view_vector)  # calculate L2-norm of the vector
