@@ -148,7 +148,6 @@ def average_dataframes_by_rows(df, num_rows):
     return avg_df
 
 
-
 #sampling by rows
 
 # Sample every nth row
@@ -165,24 +164,6 @@ def sample_dataframes_by_rows(df, num_rows):
     'game_state_rot': 'first'
         })   
     return smp_df
-
-
-
-def norm_average(dfs):
-  for d in range(len(dfs)):
-    dfs[d] = dfs[d][['position','rotation','timesincelaunch','game_state_pos', 'event_name',"rotation_x"]]
-    # Define a lambda function to take the mean of each list of arrays
-    mean_func = lambda arr_list: np.mean(arr_list, axis=0)
-
-    # Apply the lambda function to the column using apply()
-    dfs[d]['average_view_pos'] = dfs[d]['position'].apply(mean_func)
-
-    # Define a lambda function to normalize each vector
-    norm_func = lambda vec: vec / np.linalg.norm(vec)
-
-    # Apply the lambda function to the column using apply()
-    dfs[d]['norm_average_view_pos'] = dfs[d]['average_view_pos'].apply(norm_func)
-  return dfs
 
 
 def quaternion_to_3d(vector):
@@ -204,14 +185,17 @@ def quaternion_to_3d(vector):
   #change the vector to see how the graph changes - why that change occur 
   return(v)
 
-def normalize_vector(vector):
-    norm = np.linalg.norm(vector)  # calculate L2-norm of the vector
-    return [x / norm for x in vector]  # divide each element in the vector by the norm
-
 def normalize_3d(dfs):
   for i in range(len(dfs)):
     # apply the normalization function to the values in the 'col1' column
     dfs[i]['3d_quat'] = [quaternion_to_3d(quat) for quat in dfs[i]['rotation']]
     dfs[i]['3d_normalized'] = dfs[i]['3d_quat'].apply(normalize_vector)
   return dfs
+
+def normalize_vector(vector):
+    norm = np.linalg.norm(vector)  # calculate L2-norm of the vector
+    return [x / norm for x in vector]  # divide each element in the vector by the norm
+
+
+
 
