@@ -201,4 +201,3 @@ def NormalizeViewVectors(series_of_vectors, target_scale):
 
 
 
-
