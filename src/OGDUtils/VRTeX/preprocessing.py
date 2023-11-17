@@ -70,6 +70,20 @@ def ExtractTelemetryRows(df_of_events, target_event_name,package_name):
     return package_lst
 
 
+def ExtractEventRows(df_of_events, target_event_name):
+    # Keep event_name with 'data_name' & headset_on
+    package_lst = df_of_events.copy()
+    
+    # Use the isin function to filter rows where event_name is either data_name or 'headset_on'    
+    package_lst = package_lst[package_lst['event_name'].isin([target_event_name, 'headset_on'])].copy()
+    
+    # Create a new column 'headset_on_counter' that increments whenever 'headset_on' event is encountered
+    package_lst['headset_on_counter'] = np.where(package_lst['event_name'] == 'headset_on', 1, 0)
+    package_lst['headset_on_counter'] = package_lst['headset_on_counter'].cumsum()
+    package_lst = package_lst[package_lst['event_name'] == target_event_name]
+    package_lst = package_lst[package_lst['event_name'] == target_event_name]
+    package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
+    return package_lst
 
 def split_dataframe_by_player_id(df,name):
     player_groups = df.groupby(name)
