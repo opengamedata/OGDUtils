@@ -166,9 +166,9 @@ def sample_dataframes_by_rows(df, num_rows):
     return smp_df
 
 
-def quaternion_to_3d(vector):
+def quaternion_to_3d(quaternion):
   # define the quaternion vector
-  q = np.array(vector)
+  q = np.array(quaternion)
 
   # normalize the quaternion vector
   q_norm = q / np.linalg.norm(q)
@@ -185,16 +185,20 @@ def quaternion_to_3d(vector):
   #change the vector to see how the graph changes - why that change occur 
   return(v)
 
-def normalize_3d(dfs):
-  for i in range(len(dfs)):
-    # apply the normalization function to the values in the 'col1' column
-    dfs[i]['3d_quat'] = [quaternion_to_3d(quat) for quat in dfs[i]['rotation']]
-    dfs[i]['3d_normalized'] = dfs[i]['3d_quat'].apply(normalize_vector)
-  return dfs
+def QuaternionsToViewVectors(series_of_quaternions):
+    return series_of_quaternions.apply(quaternion_to_3d)
 
-def normalize_vector(vector):
-    norm = np.linalg.norm(vector)  # calculate L2-norm of the vector
-    return [x / norm for x in vector]  # divide each element in the vector by the norm
+def NormalizeViewVector(view_vector,target_scale):
+    norm = np.linalg.norm(view_vector)  # calculate L2-norm of the vector
+    return [(x / norm) * target_scale for x in view_vector]  # divide each element in the vector by the norm
+
+def NormalizeViewVectors(series_of_vectors, target_scale):
+    # apply the normalization function to the values in the 'col1' column
+    return series_of_vectors.apply(lambda v: NormalizeViewVector(v, target_scale))
+
+
+
+
 
 
 
