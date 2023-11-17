@@ -10,7 +10,8 @@ name = "OGDUtils"
 dynamic = ["version"]
 authors = [
    { name="Luke Swanson", email="superscription58@gmail.com" },
-   { name="John McCloskey" }
+   { name="John McCloskey" },
+   { name="Renee Li" }
 ]
 description = "A package with utilities for working with output data from the Open Game Data core"
 readme = "README.md"
