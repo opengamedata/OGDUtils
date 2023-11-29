@@ -8,12 +8,11 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 print(sys.version)
-
+from scipy.spatial.distance import pdist
 
 
 def dot_pdt(dfs):
   for i in range(len(dfs)):
-    
     shifted_lst = dfs[i]['3d_normalized'].shift(-1).tolist()
     origin = dfs[i]['3d_normalized'].values.tolist()
     shifted_lst[-1] = np.array([0,0,0])
@@ -23,9 +22,8 @@ def dot_pdt(dfs):
     dfs[i]['dot_product'] = dot_lst
   return dfs
 
-from scipy.spatial.distance import pdist
-#added assortment by timestamp for later graph purpose
 
+#added assortment by timestamp for later graph purpose
 
 def pairwise_distance(dfs):
   for i in range(len(dfs)):
@@ -49,8 +47,7 @@ def fst_n_min(dfs, n_min=1):
     ret_val[i] = dfs[i][dfs[i]['timesincelaunch']<=n_min*60]
   return ret_val
   
-view_1st_5_min = fst_n_min(df_pos_rot, n_min=5)
-print(view_1st_5_min)
+
 
 def create_player_plot(player_number,event_data):
 
@@ -77,6 +74,27 @@ def create_player_plot(player_number,event_data):
             fig.add_vline(x=event_time, line_width=2, line_dash="dash", line_color="yellow")
     
     fig.show()
+
+
+#see when the waddle happen & add vertical line for the time when waddle event occur 
+
+def process_other_events(data_name):
+    # Keep event_name with 'data_name' & headset_on
+    package_lst = df_copy.copy()
+    
+    # Use the isin function to filter rows where event_name is either data_name or 'headset_on'
+    #package_lst = package_lst[package_lst['event_name'] == data_name].copy()
+    
+    package_lst = package_lst[package_lst['event_name'].isin([data_name, 'headset_on'])].copy()
+    
+    # Create a new column 'headset_on_counter' that increments whenever 'headset_on' event is encountered
+    #package_lst['headset_on_counter'] = (package_lst['event_name'] == 'headset_on').groupby(package_lst['session_id']).cumsum()
+    package_lst['headset_on_counter'] = np.where(package_lst['event_name'] == 'headset_on', 1, 0)
+    package_lst['headset_on_counter'] = package_lst['headset_on_counter'].cumsum()
+    package_lst = package_lst[package_lst['event_name'] == data_name]
+    package_lst = package_lst[package_lst['event_name'] == data_name]
+    package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
+    return package_lst
 
 
 def quaternion_to_rotation_matrix(q):
@@ -116,26 +134,3 @@ def quaternion_to_rotation_matrix(q):
     
     return R
 
-
-# see only x factor of roatition (),with waddle as well - from event data  
-# how to get individual rotation component from quaternion - get x component 
-player_number = 2
-event_data = waddle_lst
-
-fig = make_subplots(rows=1, cols=1, shared_yaxes=True, shared_xaxes=True, subplot_titles=('View Data', 'Left Hand', 'Right Hand'))
-
-
-
-fig.add_trace(go.Scatter(x=df_pos_rot[player_number]['timesincelaunch'][:-1], y=df_pos_rot[player_number]["rotation_x"][:-1], mode='lines'), row=1, col=1)
-
-fig.update_layout(title=f'View Vector and Hand Movement for Player {player_number}', showlegend=False)
-    
-player_id = gaze_package_lst_splt[player_number]["player_id"].iloc[0]
-other_data_for_player = event_data[event_data['player_id'] == player_id]
-event_times_for_player = other_data_for_player['timesincelaunch'].tolist()
-
-if event_times_for_player is not []:
-    for event_time in event_times_for_player:
-        fig.add_vline(x=event_time, line_width=2, line_dash="dash", line_color="yellow")
-    
-fig.show()
