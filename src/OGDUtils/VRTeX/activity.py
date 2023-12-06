@@ -36,8 +36,6 @@ def pairwise_distance(dfs):
         distances = pdist(positions)
         dot_lst.append(distances.item())
     dfs[i]['distance_product'] = dot_lst
-
-
   return dfs
 
 
@@ -49,7 +47,7 @@ def fst_n_min(dfs, n_min=1):
   
 
 
-def create_player_plot(player_number,event_data):
+def create_player_plot(player_number,event_data,df_pos_rot):
 
     #view_1st_5_min = fst_n_min(df_pos_rot, n_min=5)
     #right_1st_5_min = fst_n_min(right_pos_pairwise, n_min=5)
@@ -60,15 +58,15 @@ def create_player_plot(player_number,event_data):
     fig = make_subplots(rows=3, cols=1, shared_yaxes=True, shared_xaxes=True, subplot_titles=('View Data', 'Left Hand', 'Right Hand'))
     
     fig.add_trace(go.Scatter(x=df_pos_rot[player_number]['timesincelaunch'][:-1], y=1-df_pos_rot[player_number]['dot_product'][:-1], mode='lines'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=left_pos_pairwise[player_number]['timesincelaunch'][:-1], y=left_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=right_pos_pairwise[player_number]['timesincelaunch'][:-1], y=right_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=3, col=1)
+    # fig.add_trace(go.Scatter(x=left_pos_pairwise[player_number]['timesincelaunch'][:-1], y=left_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=2, col=1)
+    # fig.add_trace(go.Scatter(x=right_pos_pairwise[player_number]['timesincelaunch'][:-1], y=right_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=3, col=1)
     
     fig.update_layout(title=f'View Vector and Hand Movement for Player {player_number}', showlegend=False)
     
-    player_id = gaze_package_lst_splt[player_number]["player_id"].iloc[0]
+    player_id = df_pos_rot[player_number]["player_id"].iloc[0]
     other_data_for_player = event_data[event_data['player_id'] == player_id]
     event_times_for_player = other_data_for_player['timesincelaunch'].tolist()
-    print(f"percent waddle happens overall: {len(event_times_for_player)/len(gaze_package_lst_splt[player_number]['player_id'])*100}")
+    print(f"percent waddle happens overall: {len(event_times_for_player)/len(df_pos_rot[player_number]['player_id'])*100}")
     if event_times_for_player is not []:
         for event_time in event_times_for_player:
             fig.add_vline(x=event_time, line_width=2, line_dash="dash", line_color="yellow")
@@ -78,7 +76,7 @@ def create_player_plot(player_number,event_data):
 
 #see when the waddle happen & add vertical line for the time when waddle event occur 
 
-def process_other_events(data_name):
+def process_other_events(data_name,df_copy):
     # Keep event_name with 'data_name' & headset_on
     package_lst = df_copy.copy()
     
