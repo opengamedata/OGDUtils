@@ -58,8 +58,8 @@ def create_player_plot(player_number,event_data,df_pos_rot):
     fig = make_subplots(rows=3, cols=1, shared_yaxes=True, shared_xaxes=True, subplot_titles=('View Data', 'Left Hand', 'Right Hand'))
     
     fig.add_trace(go.Scatter(x=df_pos_rot[player_number]['timesincelaunch'][:-1], y=1-df_pos_rot[player_number]['dot_product'][:-1], mode='lines'), row=1, col=1)
-    # fig.add_trace(go.Scatter(x=left_pos_pairwise[player_number]['timesincelaunch'][:-1], y=left_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=2, col=1)
-    # fig.add_trace(go.Scatter(x=right_pos_pairwise[player_number]['timesincelaunch'][:-1], y=right_pos_pairwise[player_number]['distance_product'][:-1], mode='lines'), row=3, col=1)
+    #fig.add_trace(go.Scatter(x=left_pos_pairwise[player_number]['timesincelaunch'][:-1], y=left_pos_pairwise[player_number]['dot_product'][:-1], mode='lines'), row=2, col=1)
+    #fig.add_trace(go.Scatter(x=right_pos_pairwise[player_number]['timesincelaunch'][:-1], y=right_pos_pairwise[player_number]['dot_product'][:-1], mode='lines'), row=3, col=1)
     
     fig.update_layout(title=f'View Vector and Hand Movement for Player {player_number}', showlegend=False)
     
