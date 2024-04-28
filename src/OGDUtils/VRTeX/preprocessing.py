@@ -11,7 +11,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-def GetStandardColumns(df_of_events:pd.DataFrame) -> pd.DataFrame:
+def GetStandardColumns(df_of_events:pd.DataFrame, date_format="mixed") -> pd.DataFrame:
     """
     Given a dataframe of OGD event data, returns a new dataframe with only the columns useful for per-event analysis.
     Specifically, these are columns for session ID, timestamp, event name, event data, game state, and time since launch
@@ -27,7 +27,7 @@ def GetStandardColumns(df_of_events:pd.DataFrame) -> pd.DataFrame:
     #get timestamp from game_state
     df_of_events['timesincelaunch'] = df_of_events['game_state'].apply(lambda x: x.get('seconds_from_launch', 0))
     df_copy = df_of_events[['session_id','timestamp','event_name','event_data','game_state',"timesincelaunch"]]
-    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format="mixed",yearfirst=True)
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format=date_format,yearfirst=True)
     return df_copy
 
 def ExtractTelemetryRows(df_of_events:pd.DataFrame, target_event_name:str, package_name) -> pd.DataFrame:
