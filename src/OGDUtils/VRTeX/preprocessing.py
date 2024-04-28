@@ -1,6 +1,8 @@
 
 import json
 import sys
+from typing import List
+
 import matplotlib.pyplot as plt
 from plotly.subplots import make_subplots
 import numpy as np
@@ -9,17 +11,38 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 
-def GetStandardColumns(df_of_events):
-     df_of_events=df_of_events.sort_values(["session_id","index"])
-     df_of_events.loc[:,"game_state"]=df_of_events["game_state"].apply(json.loads)
-     df_of_events.loc[:,"event_data"]=df_of_events["event_data"].apply(json.loads)
-     #get timestamp from game_state
-     df_of_events['timesincelaunch'] = df_of_events['game_state'].apply(lambda x: x.get('seconds_from_launch', 0))
-     df_copy = df_of_events[['session_id','timestamp','event_name','event_data','game_state',"timesincelaunch"]]
-     df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format="mixed",yearfirst=True)
-     return df_copy
+def GetStandardColumns(df_of_events:pd.DataFrame) -> pd.DataFrame:
+    """
+    Given a dataframe of OGD event data, returns a new dataframe with only the columns useful for per-event analysis.
+    Specifically, these are columns for session ID, timestamp, event name, event data, game state, and time since launch
 
-def ExtractTelemetryRows(df_of_events, target_event_name,package_name):
+    :param df_of_events: _description_
+    :type df_of_events: pd.DataFrame
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
+    df_of_events=df_of_events.sort_values(["session_id","index"])
+    df_of_events.loc[:,"game_state"]=df_of_events["game_state"].apply(json.loads)
+    df_of_events.loc[:,"event_data"]=df_of_events["event_data"].apply(json.loads)
+    #get timestamp from game_state
+    df_of_events['timesincelaunch'] = df_of_events['game_state'].apply(lambda x: x.get('seconds_from_launch', 0))
+    df_copy = df_of_events[['session_id','timestamp','event_name','event_data','game_state',"timesincelaunch"]]
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'],format="mixed",yearfirst=True)
+    return df_copy
+
+def ExtractTelemetryRows(df_of_events:pd.DataFrame, target_event_name:str, package_name) -> pd.DataFrame:
+    """
+    Given a dataframe of OGD event data, extracts packaged per-frame data from the event data column, creating new rows from each frame in the packages.
+
+    :param df_of_events: _description_
+    :type df_of_events: pd.DataFrame
+    :param target_event_name: _description_
+    :type target_event_name: str
+    :param package_name: _description_
+    :type package_name: _type_
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     # Keep event_name with 'data_name' & headset_on
     package_lst = df_of_events.copy()
     
@@ -70,7 +93,17 @@ def ExtractTelemetryRows(df_of_events, target_event_name,package_name):
     return package_lst
 
 
-def ExtractEventRows(df_of_events, target_event_name):
+def ExtractEventRows(df_of_events:pd.DataFrame, target_event_name:str) -> pd.DataFrame:
+    """
+    Given a dataframe of OGD events, returns a new dataframe with only the "headset_on" and given target events.
+
+    :param df_of_events: _description_
+    :type df_of_events: pd.DataFrame
+    :param target_event_name: _description_
+    :type target_event_name: str
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     # Keep event_name with 'data_name' & headset_on
     package_lst = df_of_events.copy()
     
@@ -85,7 +118,15 @@ def ExtractEventRows(df_of_events, target_event_name):
     package_lst['player_id'] = package_lst['session_id'].astype(str) + '-' + package_lst['headset_on_counter'].astype(str)
     return package_lst
 
-def SplitDataframeByPlayerID(df):
+def SplitDataframeByPlayerID(df:pd.DataFrame) -> List[pd.DataFrame]:
+    """
+    Given a dataframe with a player ID column, generates a new list of dataframes, separated by the player ID.
+
+    :param df: _description_
+    :type df: pd.DataFrame
+    :return: _description_
+    :rtype: List[pd.DataFrame]
+    """
     player_groups = df.groupby("player_id")
 
     split_dataframes = []
@@ -95,7 +136,15 @@ def SplitDataframeByPlayerID(df):
 
     return split_dataframes
 
-def SplitDataframeBySessionID(df):
+def SplitDataframeBySessionID(df:pd.DataFrame) -> List[pd.DataFrame]:
+    """
+    Given a dataframe with a session ID column, generates a new list of dataframes, separated by the session ID.
+
+    :param df: _description_
+    :type df: pd.DataFrame
+    :return: _description_
+    :rtype: List[pd.DataFrame]
+    """
     player_groups = df.groupby("session_id")
 
     split_dataframes = []
@@ -132,7 +181,7 @@ def averageQuaternions(Q):
 
 #average by n rows
     
-def average_dataframes_by_rows(df, num_rows):
+def average_dataframes_by_rows(df:pd.DataFrame, num_rows:int) -> pd.DataFrame:
     df_grouped = df.groupby(df.index // num_rows)
     avg_df = df_grouped.agg({
         'session_id': 'first',
@@ -151,7 +200,7 @@ def average_dataframes_by_rows(df, num_rows):
 #sampling by rows
 
 # Sample every nth row
-def sample_dataframes_by_rows(df, num_rows):
+def sample_dataframes_by_rows(df:pd.DataFrame, num_rows:int) -> pd.DataFrame:
         # Calculate average for each group
     df_grouped = df.groupby(df.index // num_rows)
     smp_df = df_grouped.agg({
@@ -187,7 +236,7 @@ def QuaternionToViewVector(quaternion):
 def QuaternionsToViewVectors(series_of_quaternions):
     return series_of_quaternions.apply(QuaternionToViewVector)
 
-def NormalizeViewVector(view_vector,target_scale):
+def NormalizeViewVector(view_vector:np.ndarray, target_scale:float):
     norm = np.linalg.norm(view_vector)  # calculate L2-norm of the vector
     return [(x / norm) * target_scale for x in view_vector]  # divide each element in the vector by the norm
 
