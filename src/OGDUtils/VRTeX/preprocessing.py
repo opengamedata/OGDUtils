@@ -214,7 +214,7 @@ def sample_dataframes_by_rows(df:pd.DataFrame, num_rows:int) -> pd.DataFrame:
         })   
     return smp_df
 
-def QuaternionToViewVector(quaternion):
+def QuaternionToViewVector(quaternion, view_vector=np.array([0,1,0])):
   # define the quaternion vector
   q = np.array(quaternion)
 
@@ -229,12 +229,12 @@ def QuaternionToViewVector(quaternion):
 
   # compute the 3D vector
   #origional [1,0,0]
-  v = np.dot(R, np.array([1,0,0]))
+  v = np.dot(R, view_vector)
   #change the vector to see how the graph changes - why that change occur 
   return(v)
 
-def QuaternionsToViewVectors(series_of_quaternions):
-    return series_of_quaternions.apply(QuaternionToViewVector)
+def QuaternionsToViewVectors(series_of_quaternions, view_vector=np.array([0,1,0])):
+    return series_of_quaternions.apply(lambda x : QuaternionToViewVector(x, view_vector=view_vector))
 
 def NormalizeViewVector(view_vector:np.ndarray, target_scale:float):
     norm = np.linalg.norm(view_vector)  # calculate L2-norm of the vector
