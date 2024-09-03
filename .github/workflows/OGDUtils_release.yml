@@ -16,7 +16,7 @@ jobs:
       with:
         python_version: ${{ vars.OGD_PYTHON_VERSION }}
     - name: Get Build Dependencies
-      uses: opengamedata/setup-ogd-py-build@v1.1
+      uses: opengamedata/setup-ogd-py-build@v2.0
     - name: Build Package
       run: python -m build
     # - name: Upload Wheel to GitHub Release
