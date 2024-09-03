@@ -15,6 +15,6 @@ jobs:
       with:
         python_version: ${{ vars.OGD_PYTHON_VERSION }}
     - name: Get Build Dependencies
-      uses: opengamedata/setup-ogd-py-build@v1.0
+      uses: opengamedata/setup-ogd-py-build@v1.1
     - name: Build Package
       run: python -m build
