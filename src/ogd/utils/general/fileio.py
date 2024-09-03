@@ -61,7 +61,7 @@ class FileAPI:
         return ret_val
 
     @staticmethod
-    def DownloadZippedDataset(game_id:str, month:int, year:int, datatype:FileTypes, api_server:Optional[str] = None, api_path:Optional[str] = None) -> Tuple[Optional[ZipFile], str]:
+    def DownloadZippedDataset(game_id:str, month:int, year:int, datatype:FileTypes, local_path:Path=Path('./'), api_server:Optional[str] = None, api_path:Optional[str] = None) -> Tuple[Optional[ZipFile], str]:
         """Function to retrieve a dataset for a given month/year of a given game.
 
         :param game_id: The game whose dataset should be downloaded
@@ -72,6 +72,8 @@ class FileAPI:
         :type year: int
         :param datatype: The type of dataset to download
         :type datatype: FileTypes
+        :param local_path: Path to the local folder where the zipped dataset should be stored. Defaults to "./"
+        :type local_path: str
         :param api_server: A custom file server, if different from default, or use default server if None. The default can be accessed by the APIServer property.
         :type api_server: Optional[str], optional
         :param api_path: A custom path to the API on the file server, if different from default, or use default path if None. The default can be accessed by the APIPath property.
@@ -82,8 +84,8 @@ class FileAPI:
         dataset_name = "REMOTE DATASET NOT FOUND"
         zip_file     = None
 
-        _server = api_server or FileAPI._api_server
-        _path   = api_path   or FileAPI._api_path
+        _server = api_server or FileAPI.APIServer
+        _path   = api_path   or FileAPI.APIPath
         month_data_link = f'{_server}{_path}getGameFileInfoByMonth?game_id={game_id}&year={year}&month={month}'
         with urlrequest.urlopen(month_data_link) as remote_list:
             json_data    = json.loads(remote_list.read())
@@ -91,10 +93,11 @@ class FileAPI:
             file_url = json_data.get('data', {}).get(f"{datatype}_file")
             zip_name = file_url.split('/')[-1]
             dataset_name = f"{'_'.join(zip_name.split('_')[:-2])}"
+            zip_path = local_path / zip_name
             # dataset_name = f"{zip_name[:zip_name.rfind('_')]}"
-            if not Path(f'./{zip_name}').is_file():
-                print(f"Didn't find the file {zip_name} locally, downloading from {_server}...")
-                with urlrequest.urlopen(file_url) as remote_file, open(zip_name, 'wb') as local_file:
+            if not zip_path.is_file():
+                print(f"Didn't find the file {zip_path} locally, downloading from {_server}...")
+                with urlrequest.urlopen(file_url) as remote_file, open(zip_path, 'wb') as local_file:
                     shutil.copyfileobj(remote_file, local_file)
                     print(f"Successfully downloaded a copy of the file.")
             else:
