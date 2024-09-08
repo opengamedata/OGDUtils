@@ -8,8 +8,11 @@ from ogd.games.LAKELAND.features.Model import ModelInputType
 # old import that probably doesn't exist anymore.
 from realtime.ModelManager import ModelManager
 
+LAKELAND_TSV_PATH = 'tests/test_data/LAKELAND_20200828_to_20200828/LAKELAND_20200828_to_20200828_d45ae97_dump.tsv'
+STATS_OUT_PATH    = "tests/stats_results/time_since_farm_house_dairy_stats_v18.csv"
+
 # df = pd.read_csv('tests/test_data/LAKELAND_20200501_to_20200530/LAKELAND_20200501_to_20200530_5c141b6_dump.tsv', header=0, sep='\t')
-df = pd.read_csv('tests/test_data/LAKELAND_20200828_to_20200828/LAKELAND_20200828_to_20200828_d45ae97_dump.tsv', header=0, sep='\t')
+df = pd.read_csv(LAKELAND_TSV_PATH, header=0, sep='\t')
 
 unique_ids = df.sess_id.unique()
 
@@ -55,4 +58,4 @@ for i in range(0,len(ids)):
 print(rows)
 
 out_df = pd.DataFrame(rows)
-out_df.to_csv("tests/stats_results/time_since_farm_house_dairy_stats_v18.csv")
+out_df.to_csv(STATS_OUT_PATH)

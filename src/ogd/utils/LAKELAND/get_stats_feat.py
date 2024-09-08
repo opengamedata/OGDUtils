@@ -11,11 +11,18 @@ from ogd.games.LAKELAND.features.LakelandExtractor import LakelandExtractor
 # old import that probably doesn't exist anymore.
 from realtime.ModelManager import ModelManager
 
-dump = pd.read_csv(
-    "tests/test_data/LAKELAND_20200828_to_20200828 2/LAKELAND_20200828_to_20200828_d45ae97_dump.tsv", sep='\t')
+LAKELAND_TSV_PATH = "tests/test_data/LAKELAND_20200828_to_20200828 2/LAKELAND_20200828_to_20200828_d45ae97_dump.tsv"
+LAKELAND_PROC_DATA_PATH = "tests/test_data/LAKELAND_20200828_to_20200828/LAKELAND_20200828_to_20200828_d45ae97_proc.csv"
+
+dump = pd.read_csv(LAKELAND_TSV_PATH, sep='\t')
 dump = dump.rename(
-    columns={'sess_id':'session_id', 'client_secs_ms':'client_time_ms', 'persistent_sess_id':'persistent_session_id'})
-proc = pd.read_csv("tests/test_data/LAKELAND_20200828_to_20200828/LAKELAND_20200828_to_20200828_d45ae97_proc.csv")
+    columns={
+                'sess_id':'session_id',
+                'client_secs_ms':'client_time_ms',
+                'persistent_sess_id':'persistent_session_id'
+    }
+)
+proc = pd.read_csv(LAKELAND_PROC_DATA_PATH)
 # print(df.columns)
 model_name = 'PopAchVelocityModel'
 file_version = 'v18'
