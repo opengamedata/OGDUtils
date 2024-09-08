@@ -1,8 +1,12 @@
-import pandas as pd
-from realtime.ModelManager import ModelManager
+# import standard libraries
 import json
+# import 3rd-party libraries
 import numpy as np
-from models.Model import ModelInputType
+import pandas as pd
+# import OGD libraries
+from ogd.games.LAKELAND.features.Model import ModelInputType
+# old import that probably doesn't exist anymore.
+from realtime.ModelManager import ModelManager
 
 # df = pd.read_csv('tests/test_data/LAKELAND_20200501_to_20200530/LAKELAND_20200501_to_20200530_5c141b6_dump.tsv', header=0, sep='\t')
 df = pd.read_csv('tests/test_data/LAKELAND_20200828_to_20200828/LAKELAND_20200828_to_20200828_d45ae97_dump.tsv', header=0, sep='\t')

@@ -13,13 +13,16 @@ pytest  tests/test_lakeland_models.py::test_sequence_model[20070513431426580-Pop
 -x: stop at first error
 '''
 
+# import standard libraries
 import unittest
 import logging
 import pytest
 import json
-from tests import helpers
+# import OGD libraries
+from ogd.common.utils import helpers
+from ogd.games.LAKELAND.features.Model import ModelInputType
+# old import that probably doesn't exist anymore.
 from realtime.ModelManager import ModelManager
-from models.Model import ModelInputType
 
 
 zip_path = lambda kind: f'tests/test_data/LAKELAND_20200501_to_20200530_5c141b6_{kind}.zip'
