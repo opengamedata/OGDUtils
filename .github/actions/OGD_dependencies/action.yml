@@ -11,9 +11,6 @@ runs:
       run: export PATH=/home/runner/.local/bin:$PATH
       shell: bash
     - name: Get correct Python
-    #   run: |
-    #     sudo apt-get -q install python3.10
-    #   shell: bash
       uses: actions/setup-python@v4
       with:
         python-version: "3.10.x"
