@@ -1,4 +1,5 @@
 # Specific things in this project that shouldn't go to git:
+.vscode/
 
 # ignore __init__.py in the src/ogd folder.
 # If one goes in there, it will break sibling packages under the ogd namespace.
